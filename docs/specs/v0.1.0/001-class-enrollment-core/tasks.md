@@ -107,7 +107,7 @@
   - 시나리오: DRAFT/CLOSED 강의에 신청 시도 시 예외 발생 (MockK로 CourseRepository stub)
   - 비고: T011 구현 시점에 이미 동일 파일·시나리오로 작성되어 있어 추가 작업 없이 완료 처리함
 
-- [ ] **T015** — SC-003 통합 테스트 (T008 완료 후)
+- [x] **T015** — SC-003 통합 테스트 (T008 완료 후)
   - 테스트 파일: `course/presentation/CourseControllerIT.kt`
   - 검증 대상: `SC-003`
   - 시나리오: DRAFT 1건·PUBLISHED 2건·CLOSED 1건 시드 후 목록 조회 → PUBLISHED 2건만 반환 확인
