@@ -38,7 +38,7 @@
   - 상세: plan.md 데이터 모델 섹션의 컬럼·제약을 그대로 반영. `enrollment`에 `(course_id, user_id)` 유니크 인덱스 포함
   - 완료 기준: 애플리케이션 기동 시 마이그레이션이 자동 적용되고 두 테이블이 생성된다
 
-- [ ] **T004** `[P]` — 공통 모듈 구현
+- [x] **T004** `[P]` — 공통 모듈 구현
   - 구현 파일: `common/UserId.kt`, `common/GlobalExceptionHandler.kt`, `common/ApiResponse.kt`
   - 관련 요구사항: 없음 (횡단 관심사)
   - 상세: `UserId` 값 객체(Kotlin `@JvmInline value class`), 도메인 예외 → HTTP 상태 코드 매핑(`@RestControllerAdvice`), 공통 응답 래퍼
