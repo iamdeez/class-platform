@@ -112,7 +112,7 @@
   - 검증 대상: `SC-003`
   - 시나리오: DRAFT 1건·PUBLISHED 2건·CLOSED 1건 시드 후 목록 조회 → PUBLISHED 2건만 반환 확인
 
-- [ ] **T016** — SC-005, SC-007 통합 테스트 (T012 완료 후)
+- [x] **T016** — SC-005, SC-007 통합 테스트 (T012 완료 후)
   - 테스트 파일: `enrollment/presentation/EnrollmentControllerIT.kt`
   - 검증 대상: `SC-005`, `SC-007`
   - 시나리오: 동일 사용자 순차 2회 신청 → 2번째 409, 신청 후 취소 → 내 목록에서 제외 확인
