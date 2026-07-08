@@ -1,0 +1,25 @@
+# .claude/ — AI 메타데이터 (전체 제외, docs/ 문서 추적)
+.claude/*
+!.claude/docs/
+!.claude/docs/*.md
+
+# AI workspace (pipeline 실행 로그·기록 — SPEC_ROOT 하위)
+_ai-workspace/
+
+# OS / Tool crash dumps
+*.stackdump
+core.*
+
+# Gradle / Kotlin build artifacts
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+out/
+*.class
+
+# IDE
+.idea/
+*.iml
+
+# OS
+.DS_Store
