@@ -88,7 +88,7 @@
   - 상세: `EnrollUseCase`는 `CourseRepository`로 대상 강의 상태를 확인한 후 신청 생성
   - 완료 기준: 각 유스케이스 단위 테스트(MockK 기반) 통과
 
-- [ ] **T012** — EnrollmentController 및 DTO 구현 (T011 완료 후)
+- [x] **T012** — EnrollmentController 및 DTO 구현 (T011 완료 후)
   - 구현 파일: `enrollment/presentation/EnrollmentController.kt`, `enrollment/presentation/dto/*.kt`
   - 관련 요구사항: `FR-004`, `FR-005`, `FR-007`
   - 상세: plan.md 인터페이스 계약 표의 Enrollment 관련 엔드포인트 구현, `X-User-Id` 헤더 파싱
