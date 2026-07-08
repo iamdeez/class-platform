@@ -82,7 +82,7 @@
   - 상세: `DataIntegrityViolationException` → `DuplicateEnrollmentException` 변환 로직 포함
   - 완료 기준: 통합 테스트로 유니크 제약 위반 시 변환 예외가 발생함을 확인
 
-- [ ] **T011** — Enrollment 유스케이스 구현 (T010, T007 완료 후)
+- [x] **T011** — Enrollment 유스케이스 구현 (T010, T007 완료 후)
   - 구현 파일: `enrollment/application/EnrollUseCase.kt`, `CancelEnrollmentUseCase.kt`, `ListMyEnrollmentsUseCase.kt`
   - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`, `FR-007`, `FR-009`
   - 상세: `EnrollUseCase`는 `CourseRepository`로 대상 강의 상태를 확인한 후 신청 생성

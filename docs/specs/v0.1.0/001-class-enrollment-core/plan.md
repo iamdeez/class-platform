@@ -93,7 +93,7 @@ EnrollUseCase.execute(courseId, userId)
 | GET | `/api/courses?page=&size=` | 쿼리 파라미터 | `200 {items[], page, totalCount}` (PUBLISHED만) | FR-002, NFR-001, SC-003 |
 | GET | `/api/courses/{courseId}` | - | `200 {course}` / `404` | FR-003 |
 | PATCH | `/api/courses/{courseId}/status` | `{action: "PUBLISH"|"CLOSE"}` | `200` / `409`(잘못된 전이) | FR-008, SC-008 |
-| POST | `/api/courses/{courseId}/enrollments` | `X-User-Id` 헤더 | `201 {enrollmentId}` / `400`(비공개) / `409`(중복) | FR-004, FR-006, SC-004, SC-005, SC-006 |
+| POST | `/api/courses/{courseId}/enrollments` | `X-User-Id` 헤더 | `201 {enrollmentId}` / `409`(비공개) / `409`(중복) | FR-004, FR-006, SC-004, SC-005, SC-006 |
 | DELETE | `/api/enrollments/{enrollmentId}` | `X-User-Id` 헤더 | `204` / `403`(타인 신청) / `409`(CLOSED 강의) | FR-005, SC-007 |
 | GET | `/api/users/me/enrollments` | `X-User-Id` 헤더 | `200 {items[]}` | FR-007 |
 
