@@ -101,10 +101,11 @@
   - 검증 대상: `SC-001`, `SC-002`, `SC-008`
   - 시나리오: 필수값 누락 생성 실패, 생성 직후 상태 DRAFT 확인, DRAFT→CLOSED 직접 전이 거부
 
-- [ ] **T014** `[P]` — SC-004, SC-009 유스케이스 단위 테스트
+- [x] **T014** `[P]` — SC-004, SC-009 유스케이스 단위 테스트
   - 테스트 파일: `enrollment/application/EnrollUseCaseTest.kt`
   - 검증 대상: `SC-004`, `SC-009`
   - 시나리오: DRAFT/CLOSED 강의에 신청 시도 시 예외 발생 (MockK로 CourseRepository stub)
+  - 비고: T011 구현 시점에 이미 동일 파일·시나리오로 작성되어 있어 추가 작업 없이 완료 처리함
 
 - [ ] **T015** — SC-003 통합 테스트 (T008 완료 후)
   - 테스트 파일: `course/presentation/CourseControllerIT.kt`
