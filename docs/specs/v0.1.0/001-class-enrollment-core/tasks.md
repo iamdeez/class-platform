@@ -26,13 +26,13 @@
   - 상세: spring-boot-starter-web, spring-boot-starter-data-jpa, spring-boot-starter-validation, kotlin-jpa/kotlin-allopen 플러그인, Flyway, MySQL 드라이버, JUnit5/MockK/Testcontainers 의존성 선언
   - 완료 기준: `./gradlew build`가 (테스트 없이도) 성공한다
 
-- [ ] **T002** `[P]` — 로컬 MySQL 기동 구성
+- [x] **T002** `[P]` — 로컬 MySQL 기동 구성
   - 구현 파일: `docker-compose.yml`, `src/main/resources/application.yml`
   - 관련 요구사항: 없음
   - 상세: MySQL 8 컨테이너 정의, datasource 연결 정보 설정 (ddl-auto: validate)
   - 완료 기준: `docker compose up -d` 후 애플리케이션이 DB 연결에 성공한다
 
-- [ ] **T003** — Flyway 마이그레이션 작성 (T001 완료 후)
+- [x] **T003** — Flyway 마이그레이션 작성 (T001 완료 후)
   - 구현 파일: `src/main/resources/db/migration/V1__create_course_table.sql`, `V2__create_enrollment_table.sql`
   - 관련 요구사항: `NFR-002` (enrollment 유니크 제약)
   - 상세: plan.md 데이터 모델 섹션의 컬럼·제약을 그대로 반영. `enrollment`에 `(course_id, user_id)` 유니크 인덱스 포함

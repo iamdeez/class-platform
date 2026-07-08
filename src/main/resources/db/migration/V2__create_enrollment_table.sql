@@ -1,0 +1,11 @@
+CREATE TABLE enrollment (
+    id BIGINT NOT NULL AUTO_INCREMENT,
+    course_id BIGINT NOT NULL,
+    user_id BIGINT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'ACTIVE',
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    CONSTRAINT uq_enrollment_course_user UNIQUE (course_id, user_id),
+    CONSTRAINT fk_enrollment_course FOREIGN KEY (course_id) REFERENCES course (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
