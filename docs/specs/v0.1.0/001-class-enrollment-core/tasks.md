@@ -71,7 +71,7 @@
 
 ### Phase 3. 핵심 구현 — Enrollment
 
-- [ ] **T009** `[P]` — Enrollment 도메인 모델 구현 (T004 완료 후)
+- [x] **T009** `[P]` — Enrollment 도메인 모델 구현 (T004 완료 후)
   - 구현 파일: `enrollment/domain/Enrollment.kt`, `enrollment/domain/EnrollmentStatus.kt`, `enrollment/domain/exception/*.kt`
   - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`, `FR-007`
   - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다
