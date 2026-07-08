@@ -52,7 +52,7 @@
   - 상세: `publish()`/`close()` 메서드에 DRAFT→PUBLISHED→CLOSED 전이 규칙 캡슐화, price 음수 방지 불변식
   - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다
 
-- [ ] **T006** — CourseRepository 인터페이스 + JPA 구현체 (T005 완료 후)
+- [x] **T006** — CourseRepository 인터페이스 + JPA 구현체 (T005 완료 후)
   - 구현 파일: `course/domain/CourseRepository.kt`, `course/infrastructure/CourseJpaEntity.kt`, `course/infrastructure/CourseJpaRepository.kt`, `course/infrastructure/CourseRepositoryImpl.kt`
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`
   - 상세: 도메인 객체 ↔ JPA 엔티티 변환, PUBLISHED 상태 필터링 페이지 조회 메서드 포함
