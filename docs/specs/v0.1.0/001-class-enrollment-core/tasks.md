@@ -58,7 +58,7 @@
   - 상세: 도메인 객체 ↔ JPA 엔티티 변환, PUBLISHED 상태 필터링 페이지 조회 메서드 포함
   - 완료 기준: 통합 테스트(Testcontainers)로 저장·조회 왕복이 확인된다
 
-- [ ] **T007** — Course 유스케이스 구현 (T006 완료 후)
+- [x] **T007** — Course 유스케이스 구현 (T006 완료 후)
   - 구현 파일: `course/application/RegisterCourseUseCase.kt`, `PublishCourseUseCase.kt`, `CloseCourseUseCase.kt`, `ListCoursesUseCase.kt`, `GetCourseUseCase.kt`
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`, `FR-008`
   - 완료 기준: 각 유스케이스 단위 테스트(MockK 기반) 통과
