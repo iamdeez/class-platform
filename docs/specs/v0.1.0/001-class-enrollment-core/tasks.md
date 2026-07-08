@@ -63,7 +63,7 @@
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`, `FR-008`
   - 완료 기준: 각 유스케이스 단위 테스트(MockK 기반) 통과
 
-- [ ] **T008** — CourseController 및 DTO 구현 (T007 완료 후)
+- [x] **T008** — CourseController 및 DTO 구현 (T007 완료 후)
   - 구현 파일: `course/presentation/CourseController.kt`, `course/presentation/dto/*.kt`
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`, `FR-008`
   - 상세: plan.md 인터페이스 계약 표의 Course 관련 엔드포인트 구현

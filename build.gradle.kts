@@ -31,6 +31,7 @@ dependencies {
 
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
 	testImplementation("io.mockk:mockk:1.13.12")
+	testImplementation("com.ninja-squad:springmockk:4.0.2")
 	testImplementation("org.testcontainers:junit-jupiter:1.20.1")
 	testImplementation("org.testcontainers:mysql:1.20.1")
 	testImplementation("org.jetbrains.kotlin:kotlin-test-junit5")
