@@ -46,7 +46,7 @@
 
 ### Phase 2. 핵심 구현 — Course
 
-- [ ] **T005** — Course 도메인 모델 구현 (T003 완료 후)
+- [x] **T005** — Course 도메인 모델 구현 (T003 완료 후)
   - 구현 파일: `course/domain/Course.kt`, `course/domain/CourseStatus.kt`, `course/domain/exception/*.kt`
   - 관련 요구사항: `FR-001`, `FR-008`
   - 상세: `publish()`/`close()` 메서드에 DRAFT→PUBLISHED→CLOSED 전이 규칙 캡슐화, price 음수 방지 불변식
