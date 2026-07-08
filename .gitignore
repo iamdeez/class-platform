@@ -23,3 +23,6 @@ out/
 
 # OS
 .DS_Store
+
+# Local environment secrets (docker compose env_file) — .env.example is the tracked template
+.env

@@ -1,3 +1,15 @@
 spring:
   application:
     name: class-platform
+  datasource:
+    url: jdbc:mysql://localhost:3306/${MYSQL_DATABASE:class_platform}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    username: ${MYSQL_USER:class_platform}
+    password: ${MYSQL_PASSWORD:class_platform}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
