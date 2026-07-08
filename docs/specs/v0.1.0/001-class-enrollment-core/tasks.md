@@ -117,13 +117,13 @@
   - 검증 대상: `SC-005`, `SC-007`
   - 시나리오: 동일 사용자 순차 2회 신청 → 2번째 409, 신청 후 취소 → 내 목록에서 제외 확인
 
-- [ ] **T017** — SC-006 동시성 통합 테스트 (T012 완료 후)
+- [x] **T017** — SC-006 동시성 통합 테스트 (T012 완료 후)
   - 테스트 파일: `enrollment/EnrollmentConcurrencyIT.kt`
   - 검증 대상: `SC-006`
   - 시나리오: `ExecutorService` + `CountDownLatch`로 동일 사용자·강의에 100개 동시 요청 발생 → DB에 enrollment row 정확히 1건 확인
 
 ## 구현 완료 기준
 
-- [ ] 모든 태스크 체크박스가 완료 처리되었다.
-- [ ] `./gradlew test`가 전체 PASSED를 반환한다.
-- [ ] `git status`에 의도치 않은 파일이 없다.
+- [x] 모든 태스크 체크박스가 완료 처리되었다.
+- [x] `./gradlew test`가 전체 PASSED를 반환한다.
+- [x] `git status`에 의도치 않은 파일이 없다.
