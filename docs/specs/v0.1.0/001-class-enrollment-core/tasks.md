@@ -76,7 +76,7 @@
   - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`, `FR-007`
   - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다
 
-- [ ] **T010** — EnrollmentRepository 인터페이스 + JPA 구현체 (T009 완료 후)
+- [x] **T010** — EnrollmentRepository 인터페이스 + JPA 구현체 (T009 완료 후)
   - 구현 파일: `enrollment/domain/EnrollmentRepository.kt`, `enrollment/infrastructure/EnrollmentJpaEntity.kt`, `enrollment/infrastructure/EnrollmentJpaRepository.kt`, `enrollment/infrastructure/EnrollmentRepositoryImpl.kt`
   - 관련 요구사항: `FR-006`, `NFR-002`
   - 상세: `DataIntegrityViolationException` → `DuplicateEnrollmentException` 변환 로직 포함
