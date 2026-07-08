@@ -26,6 +26,8 @@ dependencies {
 	implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
 	implementation("org.flywaydb:flyway-core")
+	implementation("org.springdoc:springdoc-openapi-starter-webmvc-api:2.6.0")
+	implementation("org.jsoup:jsoup:1.22.2")
 	runtimeOnly("org.flywaydb:flyway-mysql")
 	runtimeOnly("com.mysql:mysql-connector-j")
 
