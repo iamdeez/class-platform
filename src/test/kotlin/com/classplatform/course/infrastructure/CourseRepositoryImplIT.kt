@@ -72,4 +72,18 @@ class CourseRepositoryImplIT {
 		assertEquals(1, result.items.size)
 		assertEquals("공개 강의", result.items.first().title)
 	}
+
+	@Test
+	fun `강사별 강의 목록은 상태 무관하게 조회된다`() {
+		courseRepository.save(Course.register("초안 강의", null, BigDecimal.ZERO, UserId(1L)))
+		val published = Course.register("공개 강의", null, BigDecimal.ZERO, UserId(1L))
+		published.publish()
+		courseRepository.save(published)
+		courseRepository.save(Course.register("타 강사 강의", null, BigDecimal.ZERO, UserId(2L)))
+
+		val result = courseRepository.findAllByInstructorId(UserId(1L))
+
+		assertEquals(2, result.size)
+		assertEquals(setOf("초안 강의", "공개 강의"), result.map { it.title }.toSet())
+	}
 }

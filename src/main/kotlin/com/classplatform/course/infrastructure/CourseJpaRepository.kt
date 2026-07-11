@@ -7,4 +7,6 @@ import org.springframework.data.jpa.repository.JpaRepository
 
 interface CourseJpaRepository : JpaRepository<CourseJpaEntity, Long> {
 	fun findAllByStatus(status: CourseStatus, pageable: Pageable): Page<CourseJpaEntity>
+
+	fun findAllByInstructorId(instructorId: Long): List<CourseJpaEntity>
 }

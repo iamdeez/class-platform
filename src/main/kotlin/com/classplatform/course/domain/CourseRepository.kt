@@ -2,6 +2,7 @@ package com.classplatform.course.domain
 
 import com.classplatform.common.PageRequest
 import com.classplatform.common.PageResult
+import com.classplatform.common.UserId
 
 interface CourseRepository {
 	fun save(course: Course): Course
@@ -9,4 +10,6 @@ interface CourseRepository {
 	fun findById(id: Long): Course?
 
 	fun findAllByStatus(status: CourseStatus, pageRequest: PageRequest): PageResult<Course>
+
+	fun findAllByInstructorId(instructorId: UserId): List<Course>
 }

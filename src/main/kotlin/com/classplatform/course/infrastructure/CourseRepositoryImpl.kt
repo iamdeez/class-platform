@@ -33,6 +33,9 @@ class CourseRepositoryImpl(
 		)
 	}
 
+	override fun findAllByInstructorId(instructorId: UserId): List<Course> =
+		jpaRepository.findAllByInstructorId(instructorId.value).map { it.toDomain() }
+
 	private fun Course.toEntity(): CourseJpaEntity = CourseJpaEntity(
 		id = id,
 		title = title,
