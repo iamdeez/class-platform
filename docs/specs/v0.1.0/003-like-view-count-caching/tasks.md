@@ -55,11 +55,12 @@
 
 ### Phase 3. 핵심 구현 — 유스케이스 및 API
 
-- [ ] **T006** — LikePostUseCase, UnlikePostUseCase 구현 (T003, T005 완료 후)
-  - 구현 파일: `post/application/LikePostUseCase.kt`, `UnlikePostUseCase.kt`
+- [x] **T006** — LikePostUseCase, UnlikePostUseCase 구현 (T003, T005 완료 후)
+  - 구현 파일: `post/application/LikePostUseCase.kt`, `UnlikePostUseCase.kt`, `post/application/LikeResult.kt`(신규, 값 객체)
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`
   - 상세: 둘 다 `PostRepository.findById()`로 게시글 존재를 먼저 확인(404). `PostPopularityPort.addLike()`/`removeLike()` 호출 후 `getLikeCount()` + `refreshRanking()`으로 랭킹 갱신, `markDirty()`로 동기화 대상 등록
-  - 완료 기준: 각 유스케이스 단위 테스트(MockK로 `PostPopularityPort` 대체) 통과. 존재하지 않는 게시글에 대한 404(`PostNotFoundException`) 케이스 포함
+  - 완료 기준: 각 유스케이스 단위 테스트(MockK로 `PostPopularityPort` 대체) 통과. 존재하지 않는 게시글에 대한 404(`PostNotFoundException`) 케이스 포함 — 4건 통과
+  - **구현 노트**: `addLike()`/`removeLike()`의 반환값(신규 변경 여부)으로 분기하지 않고, 호출 후 항상 `getLikeCount()`로 최종 상태를 다시 조회해 응답한다 — 이미 좋아요한 상태에서 재요청해도(FR-003) 멱등하게 동일한 응답을 반환하도록 하기 위함이다.
 
 - [ ] **T007** — GetPostUseCase 수정: 캐시 조회 + 조회수 증가 + 장애 폴백 (T003, T005 완료 후)
   - 구현 파일: `post/application/GetPostUseCase.kt`(수정), `post/application/PostDetail.kt`(신규, 값 객체)
