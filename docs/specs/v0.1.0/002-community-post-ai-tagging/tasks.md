@@ -53,11 +53,13 @@
   - **구현 중 발견한 이슈 2**: `@EnableMongoAuditing`을 `ClassPlatformApplication`(메인 `@SpringBootApplication` 클래스)에 직접 붙였더니, `@WebMvcTest` 등 Mongo와 무관한 슬라이스 테스트에서도 이 애노테이션이 그대로 적용되어 `mongoMappingContext` 빈 부재로 14개 테스트가 컨텍스트 로딩 실패했다. `common/config/MongoAuditingConfig.kt`(별도 `@Configuration`)로 분리하고, `@DataMongoTest` 슬라이스 테스트에서는 `@Import`로 명시적으로 가져오도록 수정해 해결.
   - **테스트 격리 이슈**: `@DataMongoTest`는 `@DataJpaTest`와 달리 기본적으로 트랜잭션 롤백이 되지 않아, 테스트 메서드 간 데이터가 누적된다. `@BeforeEach`에서 `mongoRepository.deleteAll()`로 정리.
 
-- [ ] **T006** — AiTaggingPort + ClaudeAiTaggingClient 구현 (T003 완료 후)
-  - 구현 파일: `post/domain/AiTaggingPort.kt`, `post/infrastructure/ClaudeAiTaggingClient.kt`
+- [x] **T006** — AiTaggingPort + ClaudeAiTaggingClient 구현 (T003 완료 후)
+  - 구현 파일: `post/domain/AiTaggingPort.kt`, `post/domain/exception/AiTaggingFailedException.kt`, `post/infrastructure/ClaudeAiTaggingClient.kt`
   - 관련 요구사항: `FR-009`
   - 상세: `StructuredMessageCreateParams` 기반 구조화된 출력(`PostEnrichmentResult(tags, summary)`), API 예외를 도메인 예외로 변환
-  - 완료 기준: 단위 테스트에서 Claude API를 MockK로 대체해 정상/실패 응답 처리를 검증 (실제 네트워크 호출 없음)
+  - 완료 기준: 단위 테스트에서 Claude API를 MockK로 대체해 정상/실패 응답 처리를 검증 (실제 네트워크 호출 없음) — `ClaudeAiTaggingClientTest` 2건 통과
+  - **구현 노트**: `AiTaggingPort`는 순수 도메인 인터페이스(`generateTagsAndSummary(title, body): AiEnrichmentResult`)로 SDK 타입에 의존하지 않는다. 실제 API 호출·구조화 스키마(`PostEnrichmentResult`)·예외 변환(`AnthropicException` 하위 전체 → `AiTaggingFailedException`)은 infrastructure의 `ClaudeAiTaggingClient`에 캡슐화했다. AI 응답이 태그 개수·요약 길이 제약을 어기는 경우의 방어는 별도 구현하지 않았다 — `Post.markEnrichmentCompleted()`(T004)가 이미 도메인 불변식으로 검증하므로 중복을 피하고, T007의 `EnrichPostUseCase`가 그 예외를 잡아 FAILED로 전이시키는 흐름에 위임한다.
+  - **테스트 기법 노트**: `anthropic-java` SDK의 `StructuredMessage`/`StructuredContentBlock`/`StructuredTextBlock`은 `internal constructor`를 가진 제네릭 클래스이지만, MockK(1.13.12, 인라인 mock agent 내장)는 Objenesis 기반으로 생성자 호출 없이 프록시를 만들기 때문에 체이닝 목킹(`content().first().asText().text()`)이 문제없이 동작했다. 목킹을 위해 `PostEnrichmentResult`는 `private`이 아닌 `internal` 가시성으로 선언했다(테스트 소스셋은 Kotlin Gradle 플러그인이 기본으로 main과 friend path를 공유하므로 `internal` 접근 가능).
 
 - [ ] **T007** — Post 유스케이스 구현 (T005, T006 완료 후)
   - 구현 파일: `post/application/CreatePostUseCase.kt`, `GetPostUseCase.kt`, `ListPostsUseCase.kt`, `UpdatePostUseCase.kt`, `DeletePostUseCase.kt`, `EnrichPostUseCase.kt`
