@@ -3,9 +3,11 @@ package com.classplatform.enrollment.presentation
 import com.classplatform.common.ApiResponse
 import com.classplatform.common.UserId
 import com.classplatform.enrollment.application.CancelEnrollmentUseCase
+import com.classplatform.enrollment.application.CompleteEnrollmentUseCase
 import com.classplatform.enrollment.application.EnrollUseCase
 import com.classplatform.enrollment.application.ListMyEnrollmentsUseCase
 import com.classplatform.enrollment.domain.Enrollment
+import com.classplatform.enrollment.presentation.dto.CompleteEnrollmentResponse
 import com.classplatform.enrollment.presentation.dto.EnrollmentListResponse
 import com.classplatform.enrollment.presentation.dto.EnrollmentResponse
 import com.classplatform.enrollment.presentation.dto.RegisterEnrollmentResponse
@@ -22,6 +24,7 @@ import org.springframework.web.bind.annotation.RestController
 class EnrollmentController(
 	private val enrollUseCase: EnrollUseCase,
 	private val cancelEnrollmentUseCase: CancelEnrollmentUseCase,
+	private val completeEnrollmentUseCase: CompleteEnrollmentUseCase,
 	private val listMyEnrollmentsUseCase: ListMyEnrollmentsUseCase,
 ) {
 
@@ -42,6 +45,17 @@ class EnrollmentController(
 	): ResponseEntity<Void> {
 		cancelEnrollmentUseCase.execute(enrollmentId, UserId(userId))
 		return ResponseEntity.noContent().build()
+	}
+
+	@PostMapping("/api/enrollments/{enrollmentId}/complete")
+	fun complete(
+		@PathVariable enrollmentId: Long,
+		@RequestHeader("X-User-Id") userId: Long,
+	): ResponseEntity<ApiResponse<CompleteEnrollmentResponse>> {
+		val enrollment = completeEnrollmentUseCase.execute(enrollmentId, UserId(userId))
+		return ResponseEntity.ok(
+			ApiResponse.success(CompleteEnrollmentResponse(requireNotNull(enrollment.id), enrollment.status.name)),
+		)
 	}
 
 	@GetMapping("/api/users/me/enrollments")

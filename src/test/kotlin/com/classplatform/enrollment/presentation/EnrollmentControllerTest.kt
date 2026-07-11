@@ -2,6 +2,7 @@ package com.classplatform.enrollment.presentation
 
 import com.classplatform.common.UserId
 import com.classplatform.enrollment.application.CancelEnrollmentUseCase
+import com.classplatform.enrollment.application.CompleteEnrollmentUseCase
 import com.classplatform.enrollment.application.EnrollUseCase
 import com.classplatform.enrollment.application.ListMyEnrollmentsUseCase
 import com.classplatform.enrollment.domain.Enrollment
@@ -32,6 +33,9 @@ class EnrollmentControllerTest {
 
 	@MockkBean
 	private lateinit var cancelEnrollmentUseCase: CancelEnrollmentUseCase
+
+	@MockkBean
+	private lateinit var completeEnrollmentUseCase: CompleteEnrollmentUseCase
 
 	@MockkBean
 	private lateinit var listMyEnrollmentsUseCase: ListMyEnrollmentsUseCase
@@ -71,6 +75,17 @@ class EnrollmentControllerTest {
 
 		mockMvc.perform(delete("/api/enrollments/1").header("X-User-Id", "2"))
 			.andExpect(status().isNoContent)
+	}
+
+	@Test
+	fun `완료 처리가 성공하면 200과 enrollmentId·status를 반환한다`() {
+		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), BigDecimal.ZERO, EnrollmentStatus.COMPLETED)
+		every { completeEnrollmentUseCase.execute(1L, UserId(9L)) } returns enrollment
+
+		mockMvc.perform(post("/api/enrollments/1/complete").header("X-User-Id", "9"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.data.enrollmentId").value(1))
+			.andExpect(jsonPath("$.data.status").value("COMPLETED"))
 	}
 
 	@Test

@@ -59,11 +59,11 @@
   - 상세: `enrollmentRepository.findById()`(404) → `courseRepository.findById(enrollment.courseId)`(404) → `course.instructorId == requesterId` 검증(403) → `enrollment.complete()`(전이 위반 시 409) → `save()`
   - 완료 기준: 단위 테스트(MockK)로 정상 완료·404·403·409(이미 취소/이미 완료) 케이스 모두 통과 — 확인 완료 (5개 케이스 모두 PASS, `InvalidEnrollmentStatusException`은 `InvalidStateException` 상속으로 `GlobalExceptionHandler`에서 자동으로 409 매핑됨을 확인)
 
-- [ ] **T007** — EnrollmentController에 완료 처리 엔드포인트 추가 (T006 완료 후)
+- [x] **T007** — EnrollmentController에 완료 처리 엔드포인트 추가 (T006 완료 후)
   - 구현 파일: `enrollment/presentation/EnrollmentController.kt`(수정), `enrollment/presentation/dto/EnrollmentDtos.kt`(수정)
   - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`
   - 상세: `POST /api/enrollments/{enrollmentId}/complete` 추가
-  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인
+  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인 — 확인 완료 (`CompleteEnrollmentResponse(enrollmentId, status)`, plan.md 인터페이스 계약 `200 {enrollmentId, status}`과 일치)
 
 ### Phase 3. 핵심 구현 — Statistics
 

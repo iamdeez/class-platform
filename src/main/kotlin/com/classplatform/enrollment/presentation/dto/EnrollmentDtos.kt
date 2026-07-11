@@ -10,3 +10,5 @@ data class EnrollmentResponse(
 )
 
 data class EnrollmentListResponse(val items: List<EnrollmentResponse>)
+
+data class CompleteEnrollmentResponse(val enrollmentId: Long, val status: String)
