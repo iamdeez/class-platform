@@ -16,6 +16,12 @@ spring:
   data:
     mongodb:
       uri: mongodb://${MONGO_ROOT_USERNAME:root}:${MONGO_ROOT_PASSWORD:root}@localhost:27017/${MONGO_DATABASE:class_platform}?authSource=admin
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
 
 ai-enrichment:
   model: ${AI_ENRICHMENT_MODEL:claude-haiku-4-5}
+
+popularity-cache:
+  sync-interval-ms: ${POPULARITY_CACHE_SYNC_INTERVAL_MS:10000}

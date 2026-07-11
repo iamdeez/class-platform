@@ -20,16 +20,16 @@
 
 ### Phase 1. 기반 작업
 
-- [ ] **T001** — Redis 로컬 기동 구성 추가
+- [x] **T001** — Redis 로컬 기동 구성 추가
   - 구현 파일: `docker-compose.yml`(수정), `.env.example`(수정), `src/main/resources/application.yml`(수정)
   - 관련 요구사항: 없음
-  - 상세: `redis:7-alpine` 컨테이너 추가(포트 6379, healthcheck `redis-cli ping`). `spring.data.redis.host`/`port` 설정 및 동기화 배치 주기(`popularity-cache.sync-interval-ms`, 기본값 예: 10000)를 설정값으로 분리
-  - 완료 기준: `docker compose up -d` 후 애플리케이션이 Redis 연결에 성공한다
+  - 상세: `redis:7-alpine` 컨테이너 추가(포트 6379, healthcheck `redis-cli ping`). `spring.data.redis.host`/`port` 설정 및 동기화 배치 주기(`popularity-cache.sync-interval-ms`, 기본값 10000)를 설정값으로 분리
+  - 완료 기준: `docker compose up -d` 후 애플리케이션이 Redis 연결에 성공한다 — 확인 완료. T002(Gradle 의존성)가 있어야 실제 연결 시도가 발생하므로(Redis 코드가 아직 없는 상태에서는 `LettuceConnectionFactory`가 지연 초기화되어 커넥션 자체가 열리지 않음), 임시 스모크 테스트(`StringRedisTemplate`로 SET/GET)를 작성해 실행 후 삭제하는 방식으로 검증했다
 
-- [ ] **T002** `[P]` — Gradle 의존성 추가
+- [x] **T002** `[P]` — Gradle 의존성 추가
   - 구현 파일: `build.gradle.kts`
   - 상세: `spring-boot-starter-data-redis` 추가. Redis Testcontainers는 공식 모듈이 없으며 `org.testcontainers:mysql`/`mongodb`가 이미 core(`GenericContainer` 포함)를 전이 의존성으로 가져오므로 별도 추가 불필요 — 확인만 한다
-  - 완료 기준: `./gradlew build` 성공
+  - 완료 기준: `./gradlew build` 성공 — 확인 완료. `./gradlew dependencies --configuration testRuntimeClasspath`로 `org.testcontainers:testcontainers` core가 이미 전이 의존성에 포함됨을 확인했다
 
 ### Phase 2. 핵심 구현 — 캐시 포트 및 도메인
 
