@@ -78,11 +78,12 @@
   - 완료 기준: 단위 테스트(MockK)로 정렬 순서 보존과 N+1 미발생(배치 조회 1회 호출) 확인 — `ListPopularPostsUseCaseTest` 2건 통과
   - **구현 중 발견한 이슈(T003 수정)**: T003에서 만든 `getTopPostIds(limit): List<String>`는 postId만 반환해, 인기 목록 응답에 필요한 `likeCount`(plan.md 인터페이스 계약)를 얻으려면 게시글마다 별도로 `getLikeCount()`를 호출해야 했다. Redis `ZREVRANGE ... WITHSCORES`가 멤버와 점수를 한 커맨드로 함께 반환하므로, `getTopPostIds` 대신 `getTopPosts(limit): List<PostRanking>`(postId+likeCount)로 포트 시그니처를 변경해 이 왕복을 없앴다. `RedisPostPopularityAdapterTest`의 관련 테스트도 `reverseRangeWithScores` + `DefaultTypedTuple`로 갱신했다.
 
-- [ ] **T009** — PopularityCacheSyncScheduler 구현 (T003, T005 완료 후)
-  - 구현 파일: `post/infrastructure/PopularityCacheSyncScheduler.kt`, `common/AiEnrichmentConfig.kt` 또는 별도 `SchedulingConfig.kt`(`@EnableScheduling` 추가)
+- [x] **T009** — PopularityCacheSyncScheduler 구현 (T003, T005 완료 후)
+  - 구현 파일: `post/infrastructure/PopularityCacheSyncScheduler.kt`, `common/config/SchedulingConfig.kt`(신규, `@EnableScheduling`)
   - 관련 요구사항: `NFR-004`
   - 상세: `@Scheduled(fixedDelayString = "\${popularity-cache.sync-interval-ms}")`로 `consumeDirty()`가 반환한 postId들의 `likeCount`/`viewCount`를 조회해 `Post.applyPopularitySnapshot()` 후 저장
-  - 완료 기준: 단위 테스트(MockK)로 dirty set에 담긴 postId들이 모두 처리되고 저장소에 반영되는지 확인 (실제 스케줄 트리거 없이 메서드 직접 호출로 검증)
+  - 완료 기준: 단위 테스트(MockK)로 dirty set에 담긴 postId들이 모두 처리되고 저장소에 반영되는지 확인 (실제 스케줄 트리거 없이 메서드 직접 호출로 검증) — `PopularityCacheSyncSchedulerTest` 3건 통과
+  - **구현 노트**: `@EnableScheduling`은 `AiEnrichmentConfig`(AI 태깅 전용) 대신 `MongoAuditingConfig`와 같은 결의 별도 `common/config/SchedulingConfig.kt`로 분리했다(의미상 무관한 책임을 한 Configuration에 묶지 않기 위함). `consumeDirty()`가 먼저 Redis dirty set에서 제거한 뒤 처리하는 구조라, 배치 처리 도중 예외가 나면 해당 postId는 다음 좋아요/취소가 다시 `markDirty()`할 때까지 동기화가 미뤄질 수 있다(002의 "인프로세스 이벤트 유실 가능성"과 같은 결의 한계로 감수). 개별 postId 처리 실패가 배치 전체를 중단시키지 않도록 `runCatching`으로 격리했다.
 
 - [ ] **T010** — PostController 및 DTO 확장 (T006, T007, T008 완료 후)
   - 구현 파일: `post/presentation/PostController.kt`(수정), `post/presentation/dto/PostDtos.kt`(수정)
