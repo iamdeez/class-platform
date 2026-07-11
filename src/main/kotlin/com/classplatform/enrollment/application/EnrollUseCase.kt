@@ -20,7 +20,7 @@ class EnrollUseCase(
 		if (course.status != CourseStatus.PUBLISHED) {
 			throw CourseNotEnrollableException("course is not enrollable: $courseId (status=${course.status})")
 		}
-		val enrollment = Enrollment.create(courseId, userId)
+		val enrollment = Enrollment.create(courseId, userId, course.price)
 		return enrollmentRepository.save(enrollment)
 	}
 }

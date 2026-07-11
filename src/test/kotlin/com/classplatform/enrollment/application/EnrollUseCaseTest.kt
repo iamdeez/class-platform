@@ -35,6 +35,19 @@ class EnrollUseCaseTest {
 	}
 
 	@Test
+	fun `신청 시점의 강의 가격이 Enrollment에 스냅샷으로 저장된다`() {
+		val coursePrice = BigDecimal("49000.00")
+		val course = Course.reconstitute(1L, "제목", null, coursePrice, UserId(9L), CourseStatus.PUBLISHED)
+		every { courseRepository.findById(1L) } returns course
+		val savedSlot = slot<Enrollment>()
+		every { enrollmentRepository.save(capture(savedSlot)) } answers { savedSlot.captured }
+
+		val result = useCase.execute(courseId = 1L, userId = UserId(2L))
+
+		assertEquals(coursePrice, result.price)
+	}
+
+	@Test
 	fun `DRAFT 강의에 신청하면 예외가 발생한다`() {
 		val course = Course.reconstitute(1L, "제목", null, BigDecimal.ZERO, UserId(9L), CourseStatus.DRAFT)
 		every { courseRepository.findById(1L) } returns course

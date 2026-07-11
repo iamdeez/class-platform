@@ -54,7 +54,7 @@ class EnrollmentRepositoryImplIT {
 	@Test
 	fun `저장 후 조회하면 동일한 신청 정보를 반환한다`() {
 		val course = createCourse()
-		val enrollment = Enrollment.create(courseId = requireNotNull(course.id), userId = UserId(1L))
+		val enrollment = Enrollment.create(courseId = requireNotNull(course.id), userId = UserId(1L), price = BigDecimal.ZERO)
 
 		val saved = enrollmentRepository.save(enrollment)
 
@@ -67,10 +67,24 @@ class EnrollmentRepositoryImplIT {
 	@Test
 	fun `동일 사용자가 동일 강의에 중복 신청하면 예외가 발생한다`() {
 		val courseId = requireNotNull(createCourse().id)
-		enrollmentRepository.save(Enrollment.create(courseId = courseId, userId = UserId(1L)))
+		enrollmentRepository.save(Enrollment.create(courseId = courseId, userId = UserId(1L), price = BigDecimal.ZERO))
 
 		assertThrows<DuplicateEnrollmentException> {
-			enrollmentRepository.save(Enrollment.create(courseId = courseId, userId = UserId(1L)))
+			enrollmentRepository.save(Enrollment.create(courseId = courseId, userId = UserId(1L), price = BigDecimal.ZERO))
 		}
+	}
+
+	@Test
+	fun `price가 저장 후 조회 시 동일하게 왕복된다`() {
+		val course = createCourse()
+		val price = BigDecimal("49000.00")
+		val enrollment = Enrollment.create(courseId = requireNotNull(course.id), userId = UserId(1L), price = price)
+
+		val saved = enrollmentRepository.save(enrollment)
+
+		assertEquals(0, price.compareTo(saved.price))
+		val found = enrollmentRepository.findById(requireNotNull(saved.id))
+		assertNotNull(found)
+		assertEquals(0, price.compareTo(found.price))
 	}
 }

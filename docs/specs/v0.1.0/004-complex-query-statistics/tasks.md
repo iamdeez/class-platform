@@ -20,36 +20,38 @@
 
 ### Phase 1. 기반 작업 — Enrollment 도메인 확장
 
-- [ ] **T001** — EnrollmentStatus 확장 + Enrollment 도메인 모델 수정
+- [x] **T001** — EnrollmentStatus 확장 + Enrollment 도메인 모델 수정
   - 구현 파일: `enrollment/domain/EnrollmentStatus.kt`(수정), `enrollment/domain/Enrollment.kt`(수정)
   - 관련 요구사항: `FR-004`, `FR-006`, `FR-007`
   - 상세: `EnrollmentStatus`에 `COMPLETED` 추가, `CourseStatus.canTransitionTo()`와 동일한 패턴으로 전이표 캡슐화(`ACTIVE→COMPLETED`, `ACTIVE→CANCELLED`만 허용). `Enrollment`에 `price: BigDecimal` 필드 추가(`create()`/`reconstitute()` 시그니처 변경), `complete()` 메서드 추가(전이 위반 시 `InvalidEnrollmentStatusException`). 기존 `cancel()`도 새 전이표 기반으로 재작성
-  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다. `Enrollment.reconstitute()` 호출부(테스트 fixture 포함) 전수 확인 및 수정
+  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다. `Enrollment.reconstitute()` 호출부(테스트 fixture 포함) 전수 확인 및 수정 — 확인 완료
+  - **구현 노트**: `price`는 Post의 `likeCount`/`viewCount`와 달리 `create()`/`reconstitute()`에 기본값을 주지 않았다. 매출 계산의 핵심 도메인 데이터이므로 누락 시 조용히 0으로 채워지는 것을 방지하기 위해 모든 호출부를 명시적으로 고치도록 강제하는 Breaking Change로 설계했다.
+  - **구현 중 발견한 이슈**: `price` 필드 추가가 `EnrollUseCase.kt`, `EnrollmentRepositoryImpl.kt`(운영 코드)와 `CancelEnrollmentUseCaseTest.kt`, `ListMyEnrollmentsUseCaseTest.kt`, `EnrollmentRepositoryImplIT.kt`, `EnrollmentControllerTest.kt`(테스트) 등 9개 호출부에 연쇄 컴파일 오류를 유발했다(research.md에서 사전 예상한 영향 범위와 일치). T004/T005와 분리해서 진행하면 빌드가 계속 깨진 상태로 남으므로 T001+T004+T005를 하나의 구현 단위로 묶어 진행했다.
 
-- [ ] **T002** `[P]` — Gradle 의존성 추가
+- [x] **T002** `[P]` — Gradle 의존성 추가
   - 구현 파일: `build.gradle.kts`
   - 상세: `mybatis-spring-boot-starter` 추가(Spring Boot 3.3.4 호환 버전)
-  - 완료 기준: `./gradlew build` 성공
+  - 완료 기준: `./gradlew build` 성공 — 확인 완료 (`mybatis-spring-boot-starter:3.0.3`, `./gradlew dependencies --configuration compileClasspath`로 의존성 해석 확인)
 
-- [ ] **T003** — V3 마이그레이션 작성 (T002와 무관, 병렬 가능) `[P]`
+- [x] **T003** — V3 마이그레이션 작성 (T002와 무관, 병렬 가능) `[P]`
   - 구현 파일: `src/main/resources/db/migration/V3__add_enrollment_price_and_completed_status.sql`
   - 관련 요구사항: `FR-007`
   - 상세: `enrollment.price DECIMAL(10,2) NOT NULL DEFAULT 0` 추가 후, `UPDATE enrollment e JOIN course c ON e.course_id = c.id SET e.price = c.price`로 기존 행 백필. `status` 컬럼은 `VARCHAR(20)`이라 `COMPLETED` 값 저장에 스키마 변경 불필요
-  - 완료 기준: `./gradlew bootRun` 시 Flyway 마이그레이션이 오류 없이 적용된다
+  - 완료 기준: `./gradlew bootRun` 시 Flyway 마이그레이션이 오류 없이 적용된다 — 확인 완료 (Testcontainers 기반 `EnrollmentRepositoryImplIT` 실행 시 V3 마이그레이션이 오류 없이 적용됨을 함께 확인)
 
 ### Phase 2. 핵심 구현 — Enrollment 확장
 
-- [ ] **T004** — EnrollUseCase 수정: 가격 스냅샷 전달 (T001, T003 완료 후)
+- [x] **T004** — EnrollUseCase 수정: 가격 스냅샷 전달 (T001, T003 완료 후)
   - 구현 파일: `enrollment/application/EnrollUseCase.kt`(수정)
   - 관련 요구사항: `FR-007`
   - 상세: 기존에 조회하던 `course.price`를 `Enrollment.create(courseId, userId, course.price)`에 전달
-  - 완료 기준: 기존 `EnrollUseCaseTest` 수정 + 가격이 정확히 스냅샷되는지 검증하는 케이스 추가, 단위 테스트 통과
+  - 완료 기준: 기존 `EnrollUseCaseTest` 수정 + 가격이 정확히 스냅샷되는지 검증하는 케이스 추가, 단위 테스트 통과 — 확인 완료 (`신청 시점의 강의 가격이 Enrollment에 스냅샷으로 저장된다` 케이스 추가)
 
-- [ ] **T005** — EnrollmentJpaEntity/RepositoryImpl 매핑 갱신 (T001, T003 완료 후, T004와 병렬 가능) `[P]`
+- [x] **T005** — EnrollmentJpaEntity/RepositoryImpl 매핑 갱신 (T001, T003 완료 후, T004와 병렬 가능) `[P]`
   - 구현 파일: `enrollment/infrastructure/EnrollmentJpaEntity.kt`(수정), `enrollment/infrastructure/EnrollmentRepositoryImpl.kt`(수정)
   - 관련 요구사항: `FR-007`
   - 상세: `price` 컬럼 매핑 추가, 도메인 ↔ JPA 엔티티 변환에 반영
-  - 완료 기준: Testcontainers 통합 테스트로 `price` 저장·조회 왕복 확인
+  - 완료 기준: Testcontainers 통합 테스트로 `price` 저장·조회 왕복 확인 — 확인 완료 (`price가 저장 후 조회 시 동일하게 왕복된다` 케이스 추가, `BigDecimal.compareTo()` 기반 스케일 무관 비교)
 
 - [ ] **T006** — CompleteEnrollmentUseCase 구현 (T001, T005 완료 후)
   - 구현 파일: `enrollment/application/CompleteEnrollmentUseCase.kt`(신규)

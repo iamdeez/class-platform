@@ -36,6 +36,7 @@ class EnrollmentRepositoryImpl(
 		id = id,
 		courseId = courseId,
 		userId = userId.value,
+		price = price,
 		status = status,
 	)
 
@@ -43,6 +44,7 @@ class EnrollmentRepositoryImpl(
 		id = requireNotNull(id) { "persisted EnrollmentJpaEntity must have an id" },
 		courseId = courseId,
 		userId = UserId(userId),
+		price = price,
 		status = status,
 	)
 }

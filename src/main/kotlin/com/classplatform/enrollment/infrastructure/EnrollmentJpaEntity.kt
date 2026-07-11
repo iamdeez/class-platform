@@ -11,6 +11,7 @@ import jakarta.persistence.Id
 import jakarta.persistence.Table
 import org.hibernate.annotations.CreationTimestamp
 import org.hibernate.annotations.UpdateTimestamp
+import java.math.BigDecimal
 import java.time.LocalDateTime
 
 @Entity
@@ -25,6 +26,9 @@ class EnrollmentJpaEntity(
 
 	@Column(name = "user_id", nullable = false)
 	val userId: Long,
+
+	@Column(nullable = false)
+	val price: BigDecimal,
 
 	@Enumerated(EnumType.STRING)
 	@Column(nullable = false, length = 20)

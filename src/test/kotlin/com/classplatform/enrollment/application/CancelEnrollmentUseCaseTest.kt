@@ -26,7 +26,7 @@ class CancelEnrollmentUseCaseTest {
 
 	@Test
 	fun `본인 신청을 취소하면 상태가 CANCELLED로 바뀐다`() {
-		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), EnrollmentStatus.ACTIVE)
+		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), BigDecimal.ZERO, EnrollmentStatus.ACTIVE)
 		val course = Course.reconstitute(10L, "제목", null, BigDecimal.ZERO, UserId(9L), CourseStatus.PUBLISHED)
 		every { enrollmentRepository.findById(1L) } returns enrollment
 		every { courseRepository.findById(10L) } returns course
@@ -40,7 +40,7 @@ class CancelEnrollmentUseCaseTest {
 
 	@Test
 	fun `타인의 신청을 취소하려 하면 예외가 발생한다`() {
-		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), EnrollmentStatus.ACTIVE)
+		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), BigDecimal.ZERO, EnrollmentStatus.ACTIVE)
 		every { enrollmentRepository.findById(1L) } returns enrollment
 
 		assertThrows<EnrollmentAccessDeniedException> {
@@ -50,7 +50,7 @@ class CancelEnrollmentUseCaseTest {
 
 	@Test
 	fun `CLOSED 강의의 신청은 취소할 수 없다`() {
-		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), EnrollmentStatus.ACTIVE)
+		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), BigDecimal.ZERO, EnrollmentStatus.ACTIVE)
 		val course = Course.reconstitute(10L, "제목", null, BigDecimal.ZERO, UserId(9L), CourseStatus.CLOSED)
 		every { enrollmentRepository.findById(1L) } returns enrollment
 		every { courseRepository.findById(10L) } returns course

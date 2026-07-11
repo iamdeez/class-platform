@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import java.math.BigDecimal
 
 @WebMvcTest(EnrollmentController::class)
 class EnrollmentControllerTest {
@@ -37,7 +38,7 @@ class EnrollmentControllerTest {
 
 	@Test
 	fun `수강 신청이 성공하면 201과 enrollmentId를 반환한다`() {
-		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), EnrollmentStatus.ACTIVE)
+		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), BigDecimal.ZERO, EnrollmentStatus.ACTIVE)
 		every { enrollUseCase.execute(10L, UserId(2L)) } returns enrollment
 
 		mockMvc.perform(post("/api/courses/10/enrollments").header("X-User-Id", "2"))
@@ -65,7 +66,7 @@ class EnrollmentControllerTest {
 
 	@Test
 	fun `정상 취소 요청은 204를 반환한다`() {
-		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), EnrollmentStatus.CANCELLED)
+		val enrollment = Enrollment.reconstitute(1L, 10L, UserId(2L), BigDecimal.ZERO, EnrollmentStatus.CANCELLED)
 		every { cancelEnrollmentUseCase.execute(1L, UserId(2L)) } returns enrollment
 
 		mockMvc.perform(delete("/api/enrollments/1").header("X-User-Id", "2"))
