@@ -25,8 +25,8 @@
 
 - **프로젝트명**: class-platform
 - **목적**: 월부닷컴 Sr. Software Engineer(BE) 채용공고 대비 포트폴리오 연습 — 온라인 클래스 플랫폼(강의/커뮤니티) 미니 클론
-- **현재 버전**: v0.1.0 (001 spec 구현 진행 중, tasks.md 기준 13/23 완료)
-- **주요 기술 스택 (적용됨)**: Kotlin 1.9.25, Spring Boot 3.3.4, JDK 17, Gradle(Kotlin DSL), Spring Data JPA + Hibernate, Flyway, MySQL 8.0. JUnit5 + MockK/springmockk(유닛), Testcontainers-MySQL(통합). MyBatis·MongoDB·Redis는 아직 미도입 (003/004 spec에서 캐싱·복잡 조회 도입 시 추가 예정). 상세 선정 근거는 `docs/specs/v0.1.0/001-class-enrollment-core/research.md` 참조.
+- **현재 버전**: v0.1.0 (001, 002 spec 구현 완료. 003-like-view-count-caching, 004-complex-query-statistics는 미착수)
+- **주요 기술 스택 (적용됨)**: Kotlin 1.9.25, Spring Boot 3.3.4, JDK 17, Gradle(Kotlin DSL). 001: Spring Data JPA + Hibernate, Flyway, MySQL 8.0. 002: Spring Data MongoDB, MongoDB 8.0, `com.anthropic:anthropic-java:2.34.0`(Claude API, Structured Outputs), `org.jsoup:jsoup`(HTML sanitize, 001 후속 도입 후 002도 재사용). JUnit5 + MockK/springmockk(유닛·슬라이스), Testcontainers-MySQL/-MongoDB(통합). MyBatis·Redis는 아직 미도입 (003/004 spec에서 캐싱·복잡 조회 도입 시 추가 예정). 상세 선정 근거는 각 spec의 `research.md` 참조.
 
 ## 2. 프로젝트 구조
 
@@ -36,50 +36,63 @@
 class-platform/
 ├── CLAUDE.md
 ├── .claude/docs/                     ← constitution.md, context.md(본 문서), infra.md
-├── docs/specs/v0.1.0/                ← 001, 002 spec 설계 문서
-├── docker-compose.yml                ← 로컬 MySQL 컨테이너
+├── docs/specs/v0.1.0/                ← 001, 002 spec 설계 문서 + CHANGES.md + DIFF-*.md
+├── docker-compose.yml                ← 로컬 MySQL + MongoDB 컨테이너
 ├── build.gradle.kts
 └── src/
     ├── main/kotlin/com/classplatform/
-    │   ├── common/                   ← 전 도메인 공유 (UserId, ApiResponse, 예외 처리)
-    │   ├── course/                   ← course 애그리거트 (아래 레이어 구조 참조)
-    │   └── enrollment/                ← enrollment 애그리거트
+    │   ├── common/                   ← 전 도메인 공유 (UserId, ApiResponse, 예외 처리, HtmlSanitizer, AiEnrichmentConfig)
+    │   ├── course/                   ← course 애그리거트 (MySQL/JPA, 아래 레이어 구조 참조)
+    │   ├── enrollment/                ← enrollment 애그리거트 (MySQL/JPA)
+    │   ├── post/                     ← post 애그리거트 (MongoDB, AI 태깅 포함)
+    │   └── comment/                   ← comment 애그리거트 (MongoDB)
     └── main/resources/
         ├── application.yml
-        └── db/migration/             ← Flyway 마이그레이션 (V1, V2)
+        └── db/migration/             ← Flyway 마이그레이션 (V1, V2 — course/enrollment 전용, post/comment는 MongoDB라 스키마리스)
 ```
 
 ### 레이어 구조
 
-`course`, `enrollment` 각 bounded context 패키지 내부는 아래 4개 계층으로 구성된다 (DDD + 포트-어댑터 패턴). `domain`은 프레임워크 비의존 순수 Kotlin이다 (constitution P-001).
+5개 bounded context 패키지(`course`, `enrollment`, `post`, `comment`) 내부는 모두 아래 4개 계층으로 구성된다 (DDD + 포트-어댑터 패턴). `domain`은 프레임워크 비의존 순수 Kotlin이다 (constitution P-001) — `post/domain`의 `AiTaggingPort`도 예외 없이 Claude SDK 타입에 의존하지 않는다.
 
 ```
 presentation   ← REST Controller + DTO. X-User-Id 헤더로 사용자 식별
       ↓
-application    ← UseCase. 트랜잭션 경계, 도메인 오케스트레이션
+application    ← UseCase. 도메인 오케스트레이션 (post/comment는 MongoDB 특성상 JPA @Transactional 미사용)
       ↓
-domain         ← 엔티티(불변식·상태 전이 규칙), Repository 인터페이스(포트), 도메인 예외
+domain         ← 엔티티(불변식·상태 전이 규칙), Repository 인터페이스(포트), 도메인 예외, (post만) AiTaggingPort
       ↑
-infrastructure ← JPA Entity + JpaRepository + RepositoryImpl(어댑터). 도메인 ↔ JPA 엔티티 상호 변환
+infrastructure ← JPA/Mongo Entity·Document + JpaRepository/MongoRepository + RepositoryImpl(어댑터). (post만) ClaudeAiTaggingClient, PostCreatedEventListener
 ```
 
 ### 핵심 모듈 목록
 
 | 모듈 / 클래스 | 위치 | 역할 | 비고 |
 |---|---|---|---|
-| `Course` | `course/domain/Course.kt` | 강의 애그리거트 루트. `private constructor` + 정적 팩토리(`register`/`reconstitute`)로 생성 제한, `publish()`/`close()`로만 상태 전이 | concrete |
+| `Course` | `course/domain/Course.kt` | 강의 애그리거트 루트. `private constructor` + 정적 팩토리(`register`/`reconstitute`)로 생성 제한, `publish()`/`close()`로만 상태 전이 | concrete, MySQL/JPA |
 | `CourseStatus` | `course/domain/CourseStatus.kt` | DRAFT→PUBLISHED→CLOSED 단방향 전이 규칙(`canTransitionTo`) | enum |
-| `CourseRepository` | `course/domain/CourseRepository.kt` | 포트 인터페이스 | interface |
-| `CourseRepositoryImpl` | `course/infrastructure/CourseRepositoryImpl.kt` | JPA 어댑터, `Course` ↔ `CourseJpaEntity` 변환 | `@Repository` |
+| `CourseRepository` / `CourseRepositoryImpl` | `course/domain/`, `course/infrastructure/` | 포트/JPA 어댑터 | `@Repository` |
 | `CourseController` | `course/presentation/CourseController.kt` | `/api/courses` REST API (등록/목록/상세/상태변경) | 구현 완료 |
-| `Enrollment` | `enrollment/domain/Enrollment.kt` | 수강신청 애그리거트 루트. `cancel()`로만 상태 전이 | concrete |
-| `EnrollmentRepository` | `enrollment/domain/EnrollmentRepository.kt` | 포트 인터페이스 | interface |
-| `EnrollmentRepositoryImpl` | `enrollment/infrastructure/EnrollmentRepositoryImpl.kt` | JPA 어댑터 | `@Repository` |
-| `EnrollUseCase` 등 | `enrollment/application/` | 수강신청/취소/내 신청목록 유스케이스 구현 완료 | `@Service` |
-| `EnrollmentController` | (미구현) | enrollment presentation 계층 | **T012 미완료** — §6 참조 |
+| `Enrollment` | `enrollment/domain/Enrollment.kt` | 수강신청 애그리거트 루트. `cancel()`로만 상태 전이 | concrete, MySQL/JPA |
+| `EnrollmentRepository` / `EnrollmentRepositoryImpl` | `enrollment/domain/`, `enrollment/infrastructure/` | 포트/JPA 어댑터 | `@Repository` |
+| `EnrollmentController` | `enrollment/presentation/EnrollmentController.kt` | `/api/courses/{id}/enrollments`, `/api/enrollments/{id}`, `/api/users/me/enrollments` REST API | 구현 완료 |
+| `Post` | `post/domain/Post.kt` | 게시글 애그리거트 루트. `register()`/`reconstitute()` 팩토리, `updateContent()`/`markEnrichmentCompleted()`/`markEnrichmentFailed()`로만 상태 전이. `aiStatus`(PENDING/COMPLETED/FAILED) 보유 | concrete, MongoDB |
+| `AiTaggingPort` | `post/domain/AiTaggingPort.kt` | AI 태깅 포트 인터페이스(`generateTagsAndSummary(title, body): AiEnrichmentResult`). SDK 타입 비의존 | interface |
+| `PostRepository` / `PostRepositoryImpl` | `post/domain/`, `post/infrastructure/` | 포트/MongoDB 어댑터. `save()`가 문서 전체를 덮어쓰므로 수정 시 기존 `createdAt`을 조회해 보존 | `@Repository` |
+| `ClaudeAiTaggingClient` | `post/infrastructure/ClaudeAiTaggingClient.kt` | `AiTaggingPort` 구현체. `anthropic-java` SDK Structured Outputs로 Claude API 호출, `AnthropicException` 전체를 `AiTaggingFailedException`으로 변환 | `@Component` |
+| `PostCreatedEventListener` | `post/infrastructure/PostCreatedEventListener.kt` | `@Async` + `@EventListener`로 `PostCreatedEvent` 수신 후 `EnrichPostUseCase` 호출 | `@Component` |
+| `CreatePostUseCase` 등 6종 | `post/application/` | 게시글 CRUD + `EnrichPostUseCase`(AI 태깅 성공/실패를 폭넓게 흡수해 FAILED로 전이) | `@Service` |
+| `PostController` | `post/presentation/PostController.kt` | `/api/posts` REST API 5종 | 구현 완료 |
+| `Comment` | `comment/domain/Comment.kt` | 댓글 애그리거트 루트. 수정 기능 없음(스펙 범위 외) — mutation 메서드 없는 값 객체 | concrete, MongoDB |
+| `CommentRepository` / `CommentRepositoryImpl` | `comment/domain/`, `comment/infrastructure/` | 포트/MongoDB 어댑터. `findTop100ByPostIdOrderByCreatedAtAsc`로 NFR-002(최대 100건) 만족 | `@Repository` |
+| `CreateCommentUseCase` 등 3종 | `comment/application/` | 댓글 작성(게시글 존재 확인)/목록/삭제(작성자 검증) | `@Service` |
+| `CommentController` | `comment/presentation/CommentController.kt` | `/api/posts/{postId}/comments`, `/api/comments/{commentId}` REST API | 구현 완료 |
 | `UserId` | `common/UserId.kt` | `@JvmInline value class`, 양수 검증 | 전 도메인 공유 |
 | `ApiResponse<T>` | `common/ApiResponse.kt` | 공통 응답 포맷(`data`/`error`) | — |
 | `GlobalExceptionHandler` | `common/GlobalExceptionHandler.kt` | 도메인 예외 → HTTP 상태 코드 매핑 (`@RestControllerAdvice`) | — |
+| `HtmlSanitizer` | `common/HtmlSanitizer.kt` | jsoup 기반 XSS 방어. `Course.description`(001), `Post.body`·`Comment.content`(002)가 저장 전 거친다 | object |
+| `AiEnrichmentConfig` / `AiEnrichmentProperties` | `common/AiEnrichmentConfig.kt` | `@EnableAsync`, Claude SDK 클라이언트 빈, 모델 ID 설정(`ai-enrichment.model`, 기본 `claude-haiku-4-5`) | `@Configuration` |
+| `MongoAuditingConfig` | `common/config/MongoAuditingConfig.kt` | `@EnableMongoAuditing`을 메인 애플리케이션 클래스가 아닌 별도 Configuration으로 분리(비-Mongo 슬라이스 테스트 오염 방지) | `@Configuration` |
 
 ## 3. 이벤트 및 데이터 흐름
 
@@ -90,20 +103,41 @@ HTTP 요청
       ↓
 Controller  — X-User-Id 헤더 파싱, DTO 검증(@Valid)
       ↓
-UseCase     — 트랜잭션 경계, 도메인 규칙 오케스트레이션 (예: EnrollUseCase는 CourseRepository로 강의 상태를 먼저 확인)
+UseCase     — 도메인 규칙 오케스트레이션 (예: EnrollUseCase는 CourseRepository로 강의 상태를 먼저 확인,
+              CreateCommentUseCase는 PostRepository로 게시글 존재를 먼저 확인)
       ↓
 도메인 객체  — 불변식·상태 전이 검증, 위반 시 도메인 예외 throw
       ↓
-Repository(포트) → RepositoryImpl(어댑터) → JpaRepository → MySQL
+Repository(포트) → RepositoryImpl(어댑터) → JpaRepository/MongoRepository → MySQL/MongoDB
       ↓
 GlobalExceptionHandler — 도메인 예외를 HTTP 상태 코드로 변환 (404/409/400/403)
 ```
 
-동시성 정합성(NFR-002)은 애플리케이션 레벨 락이 아니라 `enrollment` 테이블의 `(course_id, user_id)` **DB 유니크 제약**으로 보장한다.
+동시성 정합성(NFR-002, 001)은 애플리케이션 레벨 락이 아니라 `enrollment` 테이블의 `(course_id, user_id)` **DB 유니크 제약**으로 보장한다.
+
+### 게시글 등록 → AI 태깅 비동기 흐름 (002)
+
+```
+CreatePostUseCase.execute() → Post 저장(aiStatus=PENDING) → 즉시 응답 반환 (NFR-001)
+      ↓ ApplicationEventPublisher.publishEvent(PostCreatedEvent)
+      ↓ (별도 스레드, @Async)
+PostCreatedEventListener.onPostCreated()
+      ↓
+EnrichPostUseCase.execute() → AiTaggingPort.generateTagsAndSummary() (ClaudeAiTaggingClient → Claude API)
+      ↓ 성공: Post.markEnrichmentCompleted(tags, summary)   실패: Post.markEnrichmentFailed() (NFR-004 장애 격리)
+      ↓
+PostRepository.save()
+```
+
+인프로세스 이벤트라 애플리케이션이 리스너 처리 중 재시작되면 이벤트가 유실되고 해당 게시글은 PENDING에 영구히 남는다 (§6 참조).
 
 ### 외부 시스템 연동
 
-없음. 001 spec 범위에서는 외부 시스템 연동이 없다 (인증 서버, AI 서비스 등은 002 spec 이후).
+| 시스템 | 연동 방식 | 담당 모듈 | 주의사항 |
+|---|---|---|---|
+| Claude API (Anthropic) | `com.anthropic:anthropic-java` SDK, Structured Outputs | `post/infrastructure/ClaudeAiTaggingClient.kt` | 모델 ID는 `ai-enrichment.model` 설정값(기본 `claude-haiku-4-5`)으로 분리. 실제 API 호출은 자동화 테스트에 포함하지 않음(비용·플레이키니스 방지, `AiTaggingPort` mock으로 대체) |
+
+001 spec 범위에서는 외부 시스템 연동이 없었다. 인증 서버 연동은 아직 미도입(§6 참조).
 
 ## 4. 도메인 모델
 
@@ -113,14 +147,17 @@ GlobalExceptionHandler — 도메인 예외를 HTTP 상태 코드로 변환 (404
 |---|---|---|---|
 | `Course` | 강의 애그리거트 루트 | id, title, description, price(BigDecimal), instructorId(UserId), status(DRAFT/PUBLISHED/CLOSED) | title 공백 불가, price 음수 불가, 상태는 DRAFT→PUBLISHED→CLOSED 단방향만 |
 | `Enrollment` | 수강신청 애그리거트 루트 | id, courseId, userId(UserId), status(ACTIVE/CANCELLED) | 이미 CANCELLED인 신청을 재취소하면 예외 |
+| `Post` | 게시글 애그리거트 루트 | id(String, MongoDB ObjectId), title, body, authorId(UserId), aiStatus(PENDING/COMPLETED/FAILED), tags(List\<String\>, 최대 5개), summary(String?, 최대 200자) | title/body 공백 불가, tags 5개 초과·summary 200자 초과 시 `markEnrichmentCompleted()`에서 예외 |
+| `Comment` | 댓글 애그리거트 루트 | id(String), postId(String), authorId(UserId), content | content 공백 불가. 수정 없음(불변) |
 
 ### 엔티티 관계
 
 ```
 Course (1) ──── 수강 대상 ───→ (N) Enrollment
+Post (1) ──── 댓글 대상 ───→ (N) Comment
 ```
 
-`Enrollment`는 `courseId`로만 `Course`를 참조한다 (JPA 연관관계 매핑이 아닌 ID 참조 — 애그리거트 간 느슨한 결합 유지).
+`Enrollment`는 `courseId`로만 `Course`를 참조한다 (JPA 연관관계 매핑이 아닌 ID 참조 — 애그리거트 간 느슨한 결합 유지). `Comment`도 동일하게 `postId`로만 `Post`를 참조하며, MongoDB 레벨의 FK 제약은 없다(애플리케이션 레벨에서 `CreateCommentUseCase`가 `PostRepository`로 존재 여부만 확인).
 
 ## 5. 도메인 용어 사전 (Glossary)
 
@@ -130,6 +167,10 @@ Course (1) ──── 수강 대상 ───→ (N) Enrollment
 | Enrollment | 수강신청. 애그리거트 루트 엔티티명 | Registration, Subscription |
 | CourseStatus | 강의 상태(DRAFT/PUBLISHED/CLOSED) | — |
 | EnrollmentStatus | 수강신청 상태(ACTIVE/CANCELLED) | — |
+| Post | 커뮤니티 게시글. 애그리거트 루트 엔티티명 | Article, Board |
+| Comment | 게시글에 달린 댓글. 애그리거트 루트 엔티티명. 대댓글(중첩) 없음 | Reply |
+| PostAiStatus | 게시글 AI 처리 상태(PENDING/COMPLETED/FAILED) | — |
+| AiTaggingPort | AI 태깅(카테고리 태그·요약 생성) 도메인 포트 인터페이스 | — |
 | UserId | 사용자 식별자 값 객체. `common` 패키지 소속 (모든 bounded context 공유) | — |
 
 ## 6. 알려진 제약 및 기술 부채
@@ -137,10 +178,12 @@ Course (1) ──── 수강 대상 ───→ (N) Enrollment
 | 항목 | 내용 | 영향 범위 | 관련 spec |
 |---|---|---|---|
 | 취소 후 재신청 미지원 | `enrollment` 테이블의 `(course_id, user_id)` 유니크 제약이 CANCELLED 레코드에도 적용되어, 취소한 강의에 동일 사용자가 재신청 불가 (MySQL이 조건부 유니크 인덱스를 지원하지 않아 발생한 설계 트레이드오프) | `enrollment` 도메인 | `docs/specs/v0.1.0/001-class-enrollment-core/research.md` |
-| 인증·인가 미구현 | 사용자 식별은 `X-User-Id` 헤더를 신뢰하는 방식으로만 처리되며 실제 인증 체계 없음 | 전체 API | `docs/specs/v0.1.0/001-class-enrollment-core/spec.md` (범위 외) |
-| EnrollmentController 미구현 | `enrollment` 도메인/애플리케이션/인프라 계층은 구현됐으나 presentation(REST API) 계층이 아직 없음 | `enrollment` 도메인 | `docs/specs/v0.1.0/001-class-enrollment-core/tasks.md` T012 |
-| SC-001~SC-009 테스트 일부 미작성 | tasks.md T013~T017 (도메인/유스케이스 단위 테스트, SC-003·005·006·007 통합 테스트) 미완료 | 전체 | `docs/specs/v0.1.0/001-class-enrollment-core/tasks.md` |
-| MongoDB·Redis 미도입 | research.md에 계획은 있으나 실제 연결 코드·설정 없음 | 인프라 | 003/004 spec에서 도입 예정 |
+| 인증·인가 미구현 | 사용자 식별은 `X-User-Id` 헤더를 신뢰하는 방식으로만 처리되며 실제 인증 체계 없음 | 전체 API | 001/002 spec.md 모두 범위 외로 명시 |
+| Course 소유자 권한 체크 미구현 | `PublishCourseUseCase`/`CloseCourseUseCase`는 강사 소유자 검증이 없다(001 CHANGES.md 기록). `Post`/`Comment`는 반대로 수정·삭제 시 소유자 검증(`PostAccessDeniedException`/`CommentAccessDeniedException`)이 구현되어 있어 도메인 간 정책이 비대칭이다 | `course` 애플리케이션 | `docs/specs/v0.1.0/CHANGES.md` |
+| AI 처리 실패 후 재시도 미지원 | `Post.aiStatus`가 FAILED로 전이된 후 자동·수동 재시도 로직이 없다 (spec.md 범위 외로 명시) | `post` 도메인 | `docs/specs/v0.1.0/002-community-post-ai-tagging/spec.md` |
+| 인프로세스 비동기 이벤트 유실 가능성 | `PostCreatedEvent`는 스프링 인프로세스 이벤트라, 리스너가 AI 호출을 기다리는 도중 애플리케이션이 재시작되면 이벤트가 유실되고 해당 게시글은 PENDING에 영구히 남는다. 메시지 브로커 도입 전까지 감수하는 한계 | `post` 도메인 | `docs/specs/v0.1.0/002-community-post-ai-tagging/research.md` |
+| Comment 목록 페이지네이션 부재 | NFR-002가 댓글 목록도 페이지네이션 지원을 요구하지만 `GET /api/posts/{postId}/comments`에는 `page`/`size` 쿼리 파라미터가 없다. 서버 내부에서 `findTop100ByPostIdOrderByCreatedAtAsc`로 최대 100건 상한만 둠 | `comment` 도메인 | `docs/specs/v0.1.0/002-community-post-ai-tagging/tasks.md` T011 |
+| Redis·MyBatis 미도입 | 캐싱(003)·복잡 조회(004) spec에서 도입 예정. 현재는 MySQL(JPA)·MongoDB(Spring Data MongoDB) 2종만 사용 | 인프라 | 003/004 spec (미착수) |
 
 ## 7. 갱신 이력
 
@@ -148,3 +191,4 @@ Course (1) ──── 수강 대상 ───→ (N) Enrollment
 |---|---|---|---|
 | 2026-07-09 | (커밋 전) | 최초 작성 (그린필드, 소스 코드 없음) | — |
 | 2026-07-09 | `44f3192` | 001 spec 진행 중간 상태 반영 — Course·Enrollment 도메인/애플리케이션/인프라 구현 완료, 프로젝트 구조·레이어·핵심 모듈·데이터 흐름·도메인 모델을 실제 코드 기준으로 갱신. EnrollmentController 및 일부 테스트(T013~T017) 미완료 상태를 기술 부채로 기록 | `docs/specs/v0.1.0/001-class-enrollment-core/` |
+| 2026-07-12 | `6df6a9d` | 001 완료(EnrollmentController 구현, SC-001~009 테스트 전체 완료, HtmlSanitizer 후속 보완) + 002 spec(post/comment 애그리거트, MongoDB 도입, Claude API 비동기 AI 태깅) 구현 완료를 한 번에 반영. 프로젝트 구조·레이어·핵심 모듈·이벤트 흐름(비동기 AI 태깅 추가)·도메인 모델·용어 사전·기술 부채를 실제 코드 기준으로 전면 갱신 | `docs/specs/v0.1.0/001-class-enrollment-core/`, `docs/specs/v0.1.0/002-community-post-ai-tagging/` |

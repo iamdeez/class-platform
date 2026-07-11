@@ -109,29 +109,34 @@
 
 ### Phase 4. 테스트 (SC-XXX 검증)
 
-- [ ] **T014** `[P]` — SC-001 도메인 단위 테스트
+- [x] **T014** `[P]` — SC-001 도메인 단위 테스트
   - 테스트 파일: `post/domain/PostTest.kt`
   - 검증 대상: `SC-001`
+  - 완료: 3건 통과 (제목 공백/본문 공백/둘 다 공백)
 
-- [ ] **T015** `[P]` — SC-007, SC-008, SC-009 유스케이스 단위 테스트
+- [x] **T015** `[P]` — SC-007, SC-008, SC-009 유스케이스 단위 테스트
   - 테스트 파일: `post/application/EnrichPostUseCaseTest.kt`
   - 검증 대상: `SC-007`, `SC-008`, `SC-009`
   - 시나리오: AiTaggingPort Mock 성공/실패 응답에 따른 aiStatus 전이 확인
+  - **구현 노트**: 신규 파일 작성 없이 완료 처리한다. `SC-008`·`SC-009`는 T007에서 이미 작성한 `EnrichPostUseCaseTest.kt`의 성공/실패 테스트가 그대로 해당한다. `SC-007`(게시글 생성 직후 PENDING 확인)은 plan.md 테스트 전략상 "단위 테스트 (application)"으로만 분류되어 있을 뿐 `EnrichPostUseCase`가 아닌 `CreatePostUseCase`의 책임 범위라, T007에서 작성한 `CreatePostUseCaseTest.kt`의 `게시글을 생성하면 AI 처리 상태는 PENDING이고 태그·요약은 비어 있다` 테스트가 이를 검증한다. `EnrichPostUseCase`는 이미 존재하는 게시글을 대상으로 하므로 이 파일에서 SC-007을 재현할 수 없어, 중복 테스트를 만들지 않고 실제 커버 위치를 문서화하는 쪽을 택했다.
 
-- [ ] **T016** — SC-002, SC-003, SC-010 통합 테스트 (T009 완료 후)
+- [x] **T016** — SC-002, SC-003, SC-010 통합 테스트 (T009 완료 후)
   - 테스트 파일: `post/presentation/PostControllerIT.kt`
   - 검증 대상: `SC-002`, `SC-003`, `SC-010`
+  - 완료: 3건 통과. SC-002는 T008의 `PostCreatedEventIT`(서비스 레이어)와 별개로 HTTP 계층에서 동일 속성(즉시 201 응답)을 재검증한다. 비동기 리스너가 테스트 종료 후에도 남아 있다 Mongo 컨테이너 정리와 겹쳐 에러 로그가 나는 문제가 있어, 짧은 대기(1.2초)로 리스너가 끝나길 기다린 뒤 테스트를 종료하도록 정리했다.
 
-- [ ] **T017** — SC-004 통합 테스트 (T009 완료 후)
+- [x] **T017** — SC-004 통합 테스트 (T009 완료 후)
   - 테스트 파일: `post/presentation/PostAuthorizationIT.kt`
   - 검증 대상: `SC-004`
+  - 완료: 2건 통과 (비작성자 수정 403, 비작성자 삭제 403)
 
-- [ ] **T018** — SC-005, SC-006, SC-011 통합 테스트 (T013 완료 후)
+- [x] **T018** — SC-005, SC-006, SC-011 통합 테스트 (T013 완료 후)
   - 테스트 파일: `comment/presentation/CommentControllerIT.kt`
   - 검증 대상: `SC-005`, `SC-006`, `SC-011`
+  - 완료: 3건 통과
 
 ## 구현 완료 기준
 
-- [ ] 모든 태스크 체크박스가 완료 처리되었다.
-- [ ] `./gradlew test`가 전체 PASSED를 반환한다.
-- [ ] `git status`에 의도치 않은 파일이 없다.
+- [x] 모든 태스크 체크박스가 완료 처리되었다.
+- [x] `./gradlew test`가 전체 PASSED를 반환한다.
+- [x] `git status`에 의도치 않은 파일이 없다.

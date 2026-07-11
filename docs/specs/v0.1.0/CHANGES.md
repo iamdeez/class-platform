@@ -1,5 +1,47 @@
 # Changes: v0.1.0
 
+## [002-community-post-ai-tagging] 구현 완료
+
+**변경 파일**:
+
+인프라/설정:
+- `docker-compose.yml`, `.env.example`: 로컬 MongoDB 8 컨테이너(001의 MySQL과 병행)
+- `build.gradle.kts`: `spring-boot-starter-data-mongodb`, `com.anthropic:anthropic-java:2.34.0`, `org.testcontainers:mongodb:1.20.1`(test) 추가
+- `src/main/resources/application.yml`: `spring.data.mongodb.uri`, `ai-enrichment.model`(기본값 `claude-haiku-4-5`) 설정
+- `common/AiEnrichmentConfig.kt` (신규): `@EnableAsync`, Claude SDK 클라이언트 빈(`AnthropicOkHttpClient.fromEnv()`), `AiEnrichmentProperties`
+- `common/config/MongoAuditingConfig.kt` (신규): `@EnableMongoAuditing`을 메인 애플리케이션 클래스가 아닌 별도 `@Configuration`으로 분리(비-Mongo 슬라이스 테스트 오염 방지)
+
+Post 도메인(`post/*`):
+- `domain/Post.kt`: 애그리거트 루트. `register()`/`reconstitute()` 팩토리, title/body 불변식, `updateContent()`/`markEnrichmentCompleted()`/`markEnrichmentFailed()`로만 상태 전이. `aiStatus`(PENDING/COMPLETED/FAILED), `tags`(최대 5개), `summary`(최대 200자)
+- `domain/PostAiStatus.kt`, `domain/PostRepository.kt`, `domain/AiTaggingPort.kt`(+`AiEnrichmentResult`): 프레임워크·SDK 비의존 포트 인터페이스
+- `domain/event/PostCreatedEvent.kt`, `domain/exception/{PostNotFoundException, PostAccessDeniedException, AiTaggingFailedException}.kt`
+- `infrastructure/{PostMongoDocument, PostMongoRepository, PostRepositoryImpl}.kt`: MongoDB 어댑터. `save()`가 문서 전체를 덮어쓰는 특성 때문에 수정 시 기존 `createdAt`을 조회해 보존
+- `infrastructure/ClaudeAiTaggingClient.kt`: `StructuredMessageCreateParams`로 구조화된 출력(`tags`, `summary`)을 받아오는 어댑터. `AnthropicException` 계열 전체를 `AiTaggingFailedException`으로 변환
+- `infrastructure/PostCreatedEventListener.kt`: `@Async` + `@EventListener`로 `EnrichPostUseCase` 호출
+- `application/{CreatePost, GetPost, ListPosts, UpdatePost, DeletePost, EnrichPost}UseCase.kt`: `CreatePostUseCase`는 저장 직후 `PostCreatedEvent` 발행(NFR-001 비동기 처리), `UpdatePostUseCase`는 `title`/`body`를 nullable로 받아 부분 수정을 지원, `EnrichPostUseCase`는 `AiTaggingFailedException`뿐 아니라 도메인 불변식 위반까지 폭넓게 흡수해 FAILED로 전이(NFR-004 장애 격리)
+- `presentation/PostController.kt`, `presentation/dto/PostDtos.kt`: REST API 5종 (`POST/GET /api/posts`, `GET/PATCH/DELETE /api/posts/{postId}`)
+
+Comment 도메인(`comment/*`):
+- `domain/Comment.kt`: 수정 기능이 없어 mutation 메서드 없는 값 객체로 설계(`write()`/`reconstitute()`)
+- `domain/CommentRepository.kt`, `domain/exception/{CommentNotFoundException, CommentAccessDeniedException}.kt`
+- `infrastructure/{CommentMongoDocument, CommentMongoRepository, CommentRepositoryImpl}.kt`: `findTop100ByPostIdOrderByCreatedAtAsc` 파생 쿼리로 NFR-002(최대 100건)를 별도 페이지네이션 파라미터 없이 만족
+- `application/{CreateComment, ListComments, DeleteComment}UseCase.kt`: `CreateCommentUseCase`는 `PostRepository`로 게시글 존재 여부 확인, `content`는 `HtmlSanitizer`로 sanitize
+- `presentation/CommentController.kt`, `presentation/dto/CommentDtos.kt`: REST API 3종 (`POST/GET /api/posts/{postId}/comments`, `DELETE /api/comments/{commentId}`)
+
+테스트:
+- 단위: `PostTest`(SC-001), `ClaudeAiTaggingClientTest`, `{Create,Get,List,Update,Delete,Enrich}PostUseCaseTest`(SC-007/008/009 포함), `{Create,List,Delete}CommentUseCaseTest`
+- 슬라이스(`@WebMvcTest`): `PostControllerTest`, `CommentControllerTest`
+- 통합(Testcontainers MongoDB, 일부는 MySQL도 병행): `PostRepositoryImplIT`, `CommentRepositoryImplIT`, `PostCreatedEventIT`(NFR-001 비동기 검증), `PostControllerIT`(SC-002/003/010), `PostAuthorizationIT`(SC-004), `CommentControllerIT`(SC-005/006/011)
+
+**후속 작업 시 주의사항**:
+- **MongoDB 도입 완료**: 001은 MySQL 단일 의존이었으나 002부터 MySQL(Course/Enrollment)과 MongoDB(Post/Comment)가 같은 애플리케이션 컨텍스트에 공존한다. `@SpringBootTest` 풀 컨텍스트 통합 테스트는 두 Testcontainers를 모두 띄워야 한다(`PostControllerIT` 등 참조).
+- **HtmlSanitizer 재사용 완료**: 001 후속 보완에서 예고한 대로 `Post.body`, `Comment.content` 모두 `HtmlSanitizer.sanitize()`를 거친다.
+- **AI 실패 시 재시도 미지원**: spec.md 범위 외로 명시된 대로 FAILED 상태에서 자동/수동 재시도 로직이 없다. 향후 spec에서 다룰 것.
+- **Comment 목록 페이지네이션 부재**: NFR-002는 댓글 목록도 페이지네이션 지원을 요구하지만, plan.md 인터페이스 계약 표에는 `GET /api/posts/{postId}/comments`에 `page`/`size` 쿼리 파라미터가 없다. 서버 내부에서 `findTop100ByPostIdOrderByCreatedAtAsc`로 최대 100건 상한만 두었다. 댓글이 많은 게시글에 대한 명시적 페이지네이션이 필요해지면 API 계약부터 spec.md/plan.md에 먼저 반영할 것.
+- **인프로세스 비동기의 유실 가능성**: research.md에 명시된 대로, 애플리케이션이 `PostCreatedEvent` 처리 중 재시작되면 해당 이벤트는 유실되고 게시글은 PENDING에 영구히 남는다. 메시지 브로커 도입 전까지는 감수해야 하는 한계다.
+- **인증·인가 미구현**: 001과 동일하게 `X-User-Id` 헤더를 신뢰하는 방식만 사용한다 (spec.md 범위 외).
+- **좋아요·조회수·캐싱·검색·모더레이션 미도입**: 모두 spec.md에서 범위 외로 명시했으며, 003(캐싱)·향후 spec에서 다룬다.
+
 ## [001-class-enrollment-core] 구현 완료
 
 **변경 파일**:
