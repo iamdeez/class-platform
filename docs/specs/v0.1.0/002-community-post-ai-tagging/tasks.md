@@ -83,10 +83,11 @@
 
 ### Phase 3. 핵심 구현 — Comment
 
-- [ ] **T010** — Comment 도메인 모델 구현 (T001 완료 후, T004와 병렬 가능) `[P]`
-  - 구현 파일: `comment/domain/Comment.kt`, `comment/domain/exception/*.kt`
+- [x] **T010** — Comment 도메인 모델 구현 (T001 완료 후, T004와 병렬 가능) `[P]`
+  - 구현 파일: `comment/domain/Comment.kt`, `comment/domain/exception/{CommentNotFoundException, CommentAccessDeniedException}.kt`
   - 관련 요구사항: `FR-006`, `FR-007`, `FR-008`
-  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다
+  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다 — 확인 완료 (`comment/domain/` import가 `com.classplatform.common`뿐임을 grep으로 검증)
+  - **구현 노트**: 스펙 범위 외(댓글 수정 미지원)이므로 `Post`와 달리 mutation 메서드가 없는 불변에 가까운 값 객체로 설계했다(`write()`로 생성, 필드는 모두 `val`). `content`만 blank 여부를 검증한다.
 
 - [ ] **T011** — CommentRepository + MongoDB 구현체 (T010 완료 후)
   - 구현 파일: `comment/domain/CommentRepository.kt`, `comment/infrastructure/CommentMongoDocument.kt`, `comment/infrastructure/CommentMongoRepository.kt`, `comment/infrastructure/CommentRepositoryImpl.kt`
