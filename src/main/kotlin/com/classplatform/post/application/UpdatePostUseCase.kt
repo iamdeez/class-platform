@@ -12,12 +12,15 @@ import org.springframework.stereotype.Service
 class UpdatePostUseCase(
 	private val postRepository: PostRepository,
 ) {
-	fun execute(postId: String, title: String, body: String, requesterId: UserId): Post {
+	fun execute(postId: String, title: String?, body: String?, requesterId: UserId): Post {
 		val post = postRepository.findById(postId) ?: throw PostNotFoundException("post not found: $postId")
 		if (post.authorId != requesterId) {
 			throw PostAccessDeniedException("user $requesterId cannot update post $postId")
 		}
-		post.updateContent(title, HtmlSanitizer.sanitize(body))
+		post.updateContent(
+			title = title ?: post.title,
+			body = body?.let(HtmlSanitizer::sanitize) ?: post.body,
+		)
 		return postRepository.save(post)
 	}
 }

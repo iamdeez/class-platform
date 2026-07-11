@@ -41,6 +41,18 @@ class UpdatePostUseCaseTest {
 	}
 
 	@Test
+	fun `title만 주어지면 body는 기존 값을 유지한다`() {
+		every { postRepository.findById("post-1") } returns existingPost(UserId(1L))
+		val savedSlot = slot<Post>()
+		every { postRepository.save(capture(savedSlot)) } answers { savedSlot.captured }
+
+		val result = useCase.execute("post-1", "새 제목", null, UserId(1L))
+
+		assertEquals("새 제목", result.title)
+		assertEquals("원래 본문", result.body)
+	}
+
+	@Test
 	fun `존재하지 않는 게시글이면 예외가 발생한다`() {
 		every { postRepository.findById("post-1") } returns null
 

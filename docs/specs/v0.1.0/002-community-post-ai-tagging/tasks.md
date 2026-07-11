@@ -75,10 +75,11 @@
   - **구현 노트**: `CreatePostUseCase`는 `ApplicationEventPublisher`를 주입받아 `postRepository.save()` 직후 `PostCreatedEvent(postId, title, body)`를 발행하도록 수정했다(T007에서 만든 시그니처 변경, 기존 단위 테스트도 `eventPublisher` mock 추가로 갱신). `PostCreatedEventListener`는 `@Async` + `@EventListener`로 `EnrichPostUseCase`를 호출하며, `@EnableAsync`는 T003의 `AiEnrichmentConfig`가 이미 전역 적용 중이라 별도 설정이 필요 없었다.
   - **테스트 설계 노트**: 완료 기준 검증은 HTTP 계층(T009 Controller)이 아직 없어 `PostControllerIT` 대신 `@SpringBootTest` 풀 컨텍스트로 `CreatePostUseCase`를 직접 호출하는 `PostCreatedEventIT`를 작성했다. `@MockkBean`으로 `AiTaggingPort`를 1초 지연 응답으로 교체해, (1) `CreatePostUseCase.execute()`가 500ms 이내로 즉시 반환되는지(NFR-001), (2) 그 후 비동기로 `aiStatus`가 실제로 PENDING→COMPLETED까지 전이되는지(수동 폴링, 3초 타임아웃)를 함께 검증했다. 풀 컨텍스트라 MySQL·MongoDB Testcontainers를 모두 띄운다(001의 JPA/Flyway + 002의 Mongo가 같은 `ClassPlatformApplication`에 공존하기 때문).
 
-- [ ] **T009** — PostController 및 DTO 구현 (T008 완료 후)
+- [x] **T009** — PostController 및 DTO 구현 (T008 완료 후)
   - 구현 파일: `post/presentation/PostController.kt`, `post/presentation/dto/*.kt`
   - 관련 요구사항: `FR-001`~`FR-005`, `FR-010`
-  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인
+  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인 — `PostControllerTest` 9건 통과
+  - **구현 노트**: 001의 `CourseController`/`ApiResponse` 관례를 그대로 따랐다(`X-User-Id` 헤더, `ApiResponse<T>` 래핑, POST 201/DELETE 204). plan.md의 PATCH 계약(`{title?, body?}` 부분 수정)을 지원하기 위해, 컨트롤러에서 기존 값을 다시 조회해 병합하는 대신 T007에서 만든 `UpdatePostUseCase.execute(postId, title: String, body: String, ...)`를 `title: String?, body: String?`로 변경해 병합 로직을 유스케이스 내부로 옮겼다(불필요한 이중 조회 회피, 기존 `UpdatePostUseCaseTest`에 부분 수정 케이스 1건 추가). `PostControllerTest` 작성 시 001의 `CourseControllerTest`에서 이미 확인된 주의사항(`UserId` value class 파라미터에 MockK `any()`를 쓰면 내부에서 생성한 임의 값이 `require(value > 0)`에 걸려 무작위로 실패할 수 있음)을 그대로 적용해 해당 파라미터는 명시적으로 매칭했다.
 
 ### Phase 3. 핵심 구현 — Comment
 
