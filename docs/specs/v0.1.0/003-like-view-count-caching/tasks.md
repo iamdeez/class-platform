@@ -46,11 +46,12 @@
   - 상세: `likeCount: Long`, `viewCount: Long` 필드 추가(기본값 0). `register()`는 항상 0으로 시작. `reconstitute()`에 `likeCount: Long = 0, viewCount: Long = 0` 파라미터 추가(기본값으로 기존 8개 호출부 하위 호환). `applyPopularitySnapshot(likeCount: Long, viewCount: Long)` 메서드로 두 값을 함께 갱신(음수 방지 `require`)
   - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다. `applyPopularitySnapshot()` 음수 검증 단위 테스트 통과 — `PostTest`에 4건 추가(0 시작, 스냅샷 반영, 좋아요/조회수 음수 거부 각각), 기존 8개 `reconstitute()` 호출부 모두 수정 없이 컴파일됨을 확인
 
-- [ ] **T005** — PostRepository 확장 + MongoDB 매핑 갱신 (T004 완료 후)
-  - 구현 파일: `post/domain/PostRepository.kt`(수정), `post/infrastructure/PostMongoDocument.kt`(수정), `post/infrastructure/PostMongoRepository.kt`(수정), `post/infrastructure/PostRepositoryImpl.kt`(수정)
+- [x] **T005** — PostRepository 확장 + MongoDB 매핑 갱신 (T004 완료 후)
+  - 구현 파일: `post/domain/PostRepository.kt`(수정), `post/infrastructure/PostMongoDocument.kt`(수정), `post/infrastructure/PostRepositoryImpl.kt`(수정)
   - 관련 요구사항: `FR-007`
   - 상세: `PostRepository`에 `findAllByIds(ids: List<String>): List<Post>` 추가(인기 목록 배치 조회, P-002 N+1 방지). `PostMongoDocument`에 `likeCount`/`viewCount` 필드 추가(기본 0). `PostRepositoryImpl.save()`의 기존 `createdAt` 보존 트릭과 동일하게, 부분 필드 갱신 시 다른 필드가 유실되지 않는지 재확인
-  - 완료 기준: Testcontainers 통합 테스트로 `findAllByIds()` 배치 조회 및 `likeCount`/`viewCount` 저장·조회 왕복 확인
+  - 완료 기준: Testcontainers 통합 테스트로 `findAllByIds()` 배치 조회 및 `likeCount`/`viewCount` 저장·조회 왕복 확인 — `PostRepositoryImplIT`에 2건 추가, 전체 4건 통과
+  - **구현 노트**: `PostMongoRepository.kt`는 수정하지 않았다 — `MongoRepository`가 상속하는 `CrudRepository`에 이미 `findAllById(ids): Iterable<T>`가 내장되어 있어, `PostRepositoryImpl.findAllByIds()`가 이를 그대로 위임하기만 하면 된다(plan.md/tasks.md 작성 시점에는 파악하지 못했던 사실).
 
 ### Phase 3. 핵심 구현 — 유스케이스 및 API
 

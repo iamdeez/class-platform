@@ -17,6 +17,8 @@ class PostMongoDocument(
 	var aiStatus: PostAiStatus,
 	var tags: List<String>,
 	var summary: String?,
+	var likeCount: Long = 0,
+	var viewCount: Long = 0,
 ) {
 	@CreatedDate
 	var createdAt: Instant? = null

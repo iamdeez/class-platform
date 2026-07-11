@@ -77,4 +77,29 @@ class PostRepositoryImplIT {
 		assertEquals("두 번째", result.items[1].title)
 		assertEquals("첫 번째", result.items[2].title)
 	}
+
+	@Test
+	fun `좋아요·조회수 스냅샷을 저장하고 조회하면 그대로 유지된다`() {
+		val post = Post.register("제목", "본문", UserId(1L))
+		post.applyPopularitySnapshot(likeCount = 5L, viewCount = 42L)
+
+		val saved = postRepository.save(post)
+
+		val found = postRepository.findById(saved.id!!)
+		assertNotNull(found)
+		assertEquals(5L, found.likeCount)
+		assertEquals(42L, found.viewCount)
+	}
+
+	@Test
+	fun `findAllByIds는 요청한 ID들의 게시글을 모두 반환한다`() {
+		val saved1 = postRepository.save(Post.register("첫 번째", "본문1", UserId(1L)))
+		val saved2 = postRepository.save(Post.register("두 번째", "본문2", UserId(1L)))
+		postRepository.save(Post.register("세 번째", "본문3", UserId(1L)))
+
+		val result = postRepository.findAllByIds(listOf(saved1.id!!, saved2.id!!))
+
+		assertEquals(2, result.size)
+		assertEquals(setOf("첫 번째", "두 번째"), result.map { it.title }.toSet())
+	}
 }

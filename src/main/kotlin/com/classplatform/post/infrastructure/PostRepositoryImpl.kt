@@ -42,6 +42,9 @@ class PostRepositoryImpl(
 		)
 	}
 
+	override fun findAllByIds(ids: List<String>): List<Post> =
+		mongoRepository.findAllById(ids).map { it.toDomain() }
+
 	override fun deleteById(id: String) {
 		mongoRepository.deleteById(id)
 	}
@@ -54,6 +57,8 @@ class PostRepositoryImpl(
 		aiStatus = aiStatus,
 		tags = tags,
 		summary = summary,
+		likeCount = likeCount,
+		viewCount = viewCount,
 	)
 
 	private fun PostMongoDocument.toDomain(): Post = Post.reconstitute(
@@ -64,5 +69,7 @@ class PostRepositoryImpl(
 		aiStatus = aiStatus,
 		tags = tags,
 		summary = summary,
+		likeCount = likeCount,
+		viewCount = viewCount,
 	)
 }
