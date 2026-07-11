@@ -9,4 +9,6 @@ interface PostRepository {
 	fun findById(id: String): Post?
 
 	fun findAll(pageRequest: PageRequest): PageResult<Post>
+
+	fun deleteById(id: String)
 }

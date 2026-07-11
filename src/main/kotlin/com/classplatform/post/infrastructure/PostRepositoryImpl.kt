@@ -42,6 +42,10 @@ class PostRepositoryImpl(
 		)
 	}
 
+	override fun deleteById(id: String) {
+		mongoRepository.deleteById(id)
+	}
+
 	private fun Post.toDocument(): PostMongoDocument = PostMongoDocument(
 		id = id,
 		title = title,

@@ -61,10 +61,11 @@
   - **구현 노트**: `AiTaggingPort`는 순수 도메인 인터페이스(`generateTagsAndSummary(title, body): AiEnrichmentResult`)로 SDK 타입에 의존하지 않는다. 실제 API 호출·구조화 스키마(`PostEnrichmentResult`)·예외 변환(`AnthropicException` 하위 전체 → `AiTaggingFailedException`)은 infrastructure의 `ClaudeAiTaggingClient`에 캡슐화했다. AI 응답이 태그 개수·요약 길이 제약을 어기는 경우의 방어는 별도 구현하지 않았다 — `Post.markEnrichmentCompleted()`(T004)가 이미 도메인 불변식으로 검증하므로 중복을 피하고, T007의 `EnrichPostUseCase`가 그 예외를 잡아 FAILED로 전이시키는 흐름에 위임한다.
   - **테스트 기법 노트**: `anthropic-java` SDK의 `StructuredMessage`/`StructuredContentBlock`/`StructuredTextBlock`은 `internal constructor`를 가진 제네릭 클래스이지만, MockK(1.13.12, 인라인 mock agent 내장)는 Objenesis 기반으로 생성자 호출 없이 프록시를 만들기 때문에 체이닝 목킹(`content().first().asText().text()`)이 문제없이 동작했다. 목킹을 위해 `PostEnrichmentResult`는 `private`이 아닌 `internal` 가시성으로 선언했다(테스트 소스셋은 Kotlin Gradle 플러그인이 기본으로 main과 friend path를 공유하므로 `internal` 접근 가능).
 
-- [ ] **T007** — Post 유스케이스 구현 (T005, T006 완료 후)
+- [x] **T007** — Post 유스케이스 구현 (T005, T006 완료 후)
   - 구현 파일: `post/application/CreatePostUseCase.kt`, `GetPostUseCase.kt`, `ListPostsUseCase.kt`, `UpdatePostUseCase.kt`, `DeletePostUseCase.kt`, `EnrichPostUseCase.kt`
   - 관련 요구사항: `FR-001`~`FR-005`, `FR-009`~`FR-011`
-  - 완료 기준: 각 유스케이스 단위 테스트(MockK) 통과
+  - 완료 기준: 각 유스케이스 단위 테스트(MockK) 통과 — 6개 파일 14건 통과
+  - **구현 노트**: `CreatePostUseCase`/`UpdatePostUseCase`는 001에서 확립한 관례대로 본문(`body`)을 `HtmlSanitizer`로 sanitize한다(title은 Course와 동일하게 sanitize 대상에서 제외). `PostRepository`에 `deleteById(id)`를 추가했다(`PostRepositoryImpl`은 `MongoRepository.deleteById` 위임). `EnrichPostUseCase`는 아직 어디에서도 호출되지 않는 독립 유스케이스로, PostCreatedEvent 리스너(T008)가 연결한다. AI 태깅 실패 처리는 `AiTaggingFailedException`뿐 아니라 `Exception` 전체를 잡아 FAILED로 흡수한다 — AI가 태그 5개·요약 200자 불변식을 어겨 `Post.markEnrichmentCompleted()`(T004)가 던지는 경우까지 게시글 자체에는 영향이 없어야 하기 때문(NFR-004 장애 격리).
 
 - [ ] **T008** — 비동기 이벤트 발행/구독 연결 (T007 완료 후)
   - 구현 파일: `post/infrastructure/PostCreatedEventListener.kt`, `post/domain/event/PostCreatedEvent.kt`
