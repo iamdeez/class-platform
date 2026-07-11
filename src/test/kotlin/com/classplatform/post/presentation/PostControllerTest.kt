@@ -5,8 +5,13 @@ import com.classplatform.common.UserId
 import com.classplatform.post.application.CreatePostUseCase
 import com.classplatform.post.application.DeletePostUseCase
 import com.classplatform.post.application.GetPostUseCase
+import com.classplatform.post.application.LikePostUseCase
+import com.classplatform.post.application.LikeResult
+import com.classplatform.post.application.ListPopularPostsUseCase
 import com.classplatform.post.application.ListPostsUseCase
+import com.classplatform.post.application.PopularPost
 import com.classplatform.post.application.PostDetail
+import com.classplatform.post.application.UnlikePostUseCase
 import com.classplatform.post.application.UpdatePostUseCase
 import com.classplatform.post.domain.Post
 import com.classplatform.post.domain.PostAiStatus
@@ -48,6 +53,15 @@ class PostControllerTest {
 
 	@MockkBean
 	private lateinit var deletePostUseCase: DeletePostUseCase
+
+	@MockkBean
+	private lateinit var likePostUseCase: LikePostUseCase
+
+	@MockkBean
+	private lateinit var unlikePostUseCase: UnlikePostUseCase
+
+	@MockkBean
+	private lateinit var listPopularPostsUseCase: ListPopularPostsUseCase
 
 	private fun samplePost(id: String = "post-1", authorId: UserId = UserId(1L)) = Post.reconstitute(
 		id = id,
@@ -154,5 +168,48 @@ class PostControllerTest {
 
 		mockMvc.perform(delete("/api/posts/post-1").header("X-User-Id", "2"))
 			.andExpect(status().isForbidden)
+	}
+
+	@Test
+	fun `좋아요를 누르면 200과 liked true, likeCount를 반환한다`() {
+		every { likePostUseCase.execute("post-1", UserId(1L)) } returns LikeResult(liked = true, likeCount = 3L)
+
+		mockMvc.perform(post("/api/posts/post-1/likes").header("X-User-Id", "1"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.data.liked").value(true))
+			.andExpect(jsonPath("$.data.likeCount").value(3))
+	}
+
+	@Test
+	fun `존재하지 않는 게시글에 좋아요를 누르면 404를 반환한다`() {
+		every { likePostUseCase.execute("post-1", UserId(1L)) } throws
+			PostNotFoundException("post not found: post-1")
+
+		mockMvc.perform(post("/api/posts/post-1/likes").header("X-User-Id", "1"))
+			.andExpect(status().isNotFound)
+	}
+
+	@Test
+	fun `좋아요를 취소하면 200과 liked false, likeCount를 반환한다`() {
+		every { unlikePostUseCase.execute("post-1", UserId(1L)) } returns LikeResult(liked = false, likeCount = 2L)
+
+		mockMvc.perform(delete("/api/posts/post-1/likes").header("X-User-Id", "1"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.data.liked").value(false))
+			.andExpect(jsonPath("$.data.likeCount").value(2))
+	}
+
+	@Test
+	fun `인기 게시글 목록을 조회하면 200과 좋아요 수 내림차순 목록을 반환한다`() {
+		every { listPopularPostsUseCase.execute() } returns listOf(
+			PopularPost("post-2", "두 번째", 5L),
+			PopularPost("post-1", "첫 번째", 3L),
+		)
+
+		mockMvc.perform(get("/api/posts/popular"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.data.items[0].postId").value("post-2"))
+			.andExpect(jsonPath("$.data.items[0].likeCount").value(5))
+			.andExpect(jsonPath("$.data.items[1].postId").value("post-1"))
 	}
 }

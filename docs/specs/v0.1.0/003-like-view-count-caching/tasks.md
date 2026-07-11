@@ -85,11 +85,12 @@
   - 완료 기준: 단위 테스트(MockK)로 dirty set에 담긴 postId들이 모두 처리되고 저장소에 반영되는지 확인 (실제 스케줄 트리거 없이 메서드 직접 호출로 검증) — `PopularityCacheSyncSchedulerTest` 3건 통과
   - **구현 노트**: `@EnableScheduling`은 `AiEnrichmentConfig`(AI 태깅 전용) 대신 `MongoAuditingConfig`와 같은 결의 별도 `common/config/SchedulingConfig.kt`로 분리했다(의미상 무관한 책임을 한 Configuration에 묶지 않기 위함). `consumeDirty()`가 먼저 Redis dirty set에서 제거한 뒤 처리하는 구조라, 배치 처리 도중 예외가 나면 해당 postId는 다음 좋아요/취소가 다시 `markDirty()`할 때까지 동기화가 미뤄질 수 있다(002의 "인프로세스 이벤트 유실 가능성"과 같은 결의 한계로 감수). 개별 postId 처리 실패가 배치 전체를 중단시키지 않도록 `runCatching`으로 격리했다.
 
-- [ ] **T010** — PostController 및 DTO 확장 (T006, T007, T008 완료 후)
+- [x] **T010** — PostController 및 DTO 확장 (T006, T007, T008 완료 후)
   - 구현 파일: `post/presentation/PostController.kt`(수정), `post/presentation/dto/PostDtos.kt`(수정)
   - 관련 요구사항: `FR-001`~`FR-007`
   - 상세: `POST/DELETE /api/posts/{postId}/likes`, `GET /api/posts/popular` 추가. `PostResponse`에 `likeCount`/`viewCount` 필드 추가(기존 필드는 유지 — P-003)
-  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인
+  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인 — `PostControllerTest` 13건 통과(기존 9건 + 신규 4건)
+  - **구현 노트**: 목록/생성/수정 응답의 `likeCount`/`viewCount`는 `Post`에 저장된 스냅샷 값(`post.toResponse()`)을 그대로 쓰고, 상세 조회(`GET /{postId}`)만 `PostDetail`의 실시간 값으로 `.copy()`해 덮어쓴다 — 목록·생성 경로까지 매번 Redis를 왕복할 필요가 없기 때문이다(NFR-003 취지와 동일한 판단). `/api/posts/popular`와 `/api/posts/{postId}`의 경로 충돌은 plan.md에서 예상한 대로 Spring의 리터럴 경로 우선 매칭으로 문제없이 동작함을 테스트로 확인했다.
 
 ### Phase 4. 테스트 (SC-XXX 검증)
 

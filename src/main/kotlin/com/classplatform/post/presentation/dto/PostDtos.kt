@@ -19,6 +19,8 @@ data class PostResponse(
 	val aiStatus: String,
 	val tags: List<String>,
 	val summary: String?,
+	val likeCount: Long,
+	val viewCount: Long,
 )
 
 data class PostListResponse(
@@ -30,4 +32,19 @@ data class PostListResponse(
 data class UpdatePostRequest(
 	val title: String?,
 	val body: String?,
+)
+
+data class LikeResponse(
+	val liked: Boolean,
+	val likeCount: Long,
+)
+
+data class PopularPostResponse(
+	val postId: String,
+	val title: String,
+	val likeCount: Long,
+)
+
+data class PopularPostListResponse(
+	val items: List<PopularPostResponse>,
 )

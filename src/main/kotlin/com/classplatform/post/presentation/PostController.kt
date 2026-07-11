@@ -6,11 +6,18 @@ import com.classplatform.common.UserId
 import com.classplatform.post.application.CreatePostUseCase
 import com.classplatform.post.application.DeletePostUseCase
 import com.classplatform.post.application.GetPostUseCase
+import com.classplatform.post.application.LikePostUseCase
+import com.classplatform.post.application.ListPopularPostsUseCase
 import com.classplatform.post.application.ListPostsUseCase
+import com.classplatform.post.application.PopularPost
+import com.classplatform.post.application.UnlikePostUseCase
 import com.classplatform.post.application.UpdatePostUseCase
 import com.classplatform.post.domain.Post
 import com.classplatform.post.presentation.dto.CreatePostRequest
 import com.classplatform.post.presentation.dto.CreatePostResponse
+import com.classplatform.post.presentation.dto.LikeResponse
+import com.classplatform.post.presentation.dto.PopularPostListResponse
+import com.classplatform.post.presentation.dto.PopularPostResponse
 import com.classplatform.post.presentation.dto.PostListResponse
 import com.classplatform.post.presentation.dto.PostResponse
 import com.classplatform.post.presentation.dto.UpdatePostRequest
@@ -36,6 +43,9 @@ class PostController(
 	private val listPostsUseCase: ListPostsUseCase,
 	private val updatePostUseCase: UpdatePostUseCase,
 	private val deletePostUseCase: DeletePostUseCase,
+	private val likePostUseCase: LikePostUseCase,
+	private val unlikePostUseCase: UnlikePostUseCase,
+	private val listPopularPostsUseCase: ListPopularPostsUseCase,
 ) {
 
 	@PostMapping
@@ -65,10 +75,17 @@ class PostController(
 		)
 	}
 
+	@GetMapping("/popular")
+	fun popular(): ResponseEntity<ApiResponse<PopularPostListResponse>> {
+		val items = listPopularPostsUseCase.execute()
+		return ResponseEntity.ok(ApiResponse.success(PopularPostListResponse(items.map { it.toResponse() })))
+	}
+
 	@GetMapping("/{postId}")
 	fun get(@PathVariable postId: String): ResponseEntity<ApiResponse<PostResponse>> {
 		val detail = getPostUseCase.execute(postId)
-		return ResponseEntity.ok(ApiResponse.success(detail.post.toResponse()))
+		val response = detail.post.toResponse().copy(likeCount = detail.likeCount, viewCount = detail.viewCount)
+		return ResponseEntity.ok(ApiResponse.success(response))
 	}
 
 	@PatchMapping("/{postId}")
@@ -90,6 +107,24 @@ class PostController(
 		return ResponseEntity.noContent().build()
 	}
 
+	@PostMapping("/{postId}/likes")
+	fun like(
+		@PathVariable postId: String,
+		@RequestHeader("X-User-Id") userId: Long,
+	): ResponseEntity<ApiResponse<LikeResponse>> {
+		val result = likePostUseCase.execute(postId, UserId(userId))
+		return ResponseEntity.ok(ApiResponse.success(LikeResponse(result.liked, result.likeCount)))
+	}
+
+	@DeleteMapping("/{postId}/likes")
+	fun unlike(
+		@PathVariable postId: String,
+		@RequestHeader("X-User-Id") userId: Long,
+	): ResponseEntity<ApiResponse<LikeResponse>> {
+		val result = unlikePostUseCase.execute(postId, UserId(userId))
+		return ResponseEntity.ok(ApiResponse.success(LikeResponse(result.liked, result.likeCount)))
+	}
+
 	private fun Post.toResponse() = PostResponse(
 		id = requireNotNull(id),
 		title = title,
@@ -98,5 +133,13 @@ class PostController(
 		aiStatus = aiStatus.name,
 		tags = tags,
 		summary = summary,
+		likeCount = likeCount,
+		viewCount = viewCount,
+	)
+
+	private fun PopularPost.toResponse() = PopularPostResponse(
+		postId = postId,
+		title = title,
+		likeCount = likeCount,
 	)
 }
