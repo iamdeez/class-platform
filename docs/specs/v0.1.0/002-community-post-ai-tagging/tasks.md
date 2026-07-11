@@ -89,9 +89,10 @@
   - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다 — 확인 완료 (`comment/domain/` import가 `com.classplatform.common`뿐임을 grep으로 검증)
   - **구현 노트**: 스펙 범위 외(댓글 수정 미지원)이므로 `Post`와 달리 mutation 메서드가 없는 불변에 가까운 값 객체로 설계했다(`write()`로 생성, 필드는 모두 `val`). `content`만 blank 여부를 검증한다.
 
-- [ ] **T011** — CommentRepository + MongoDB 구현체 (T010 완료 후)
+- [x] **T011** — CommentRepository + MongoDB 구현체 (T010 완료 후)
   - 구현 파일: `comment/domain/CommentRepository.kt`, `comment/infrastructure/CommentMongoDocument.kt`, `comment/infrastructure/CommentMongoRepository.kt`, `comment/infrastructure/CommentRepositoryImpl.kt`
-  - 완료 기준: Testcontainers 통합 테스트로 저장·조회 왕복 확인
+  - 완료 기준: Testcontainers 통합 테스트로 저장·조회 왕복 확인 — `CommentRepositoryImplIT` 3건 통과
+  - **구현 노트**: `Comment`는 수정이 없어 `CommentMongoDocument`에 `updatedAt`을 두지 않았고, `Post.save()`의 createdAt 보존 트릭(T005 이슈 1)도 필요 없다(매번 신규 생성·삭제만 존재). NFR-002("댓글 목록도 최대 100건까지 반환")를 인터페이스 계약 표에는 없는 요구지만 코드 레벨에서 만족시키기 위해, 별도 페이지네이션 파라미터 없이 `findTop100ByPostIdOrderByCreatedAtAsc` 파생 쿼리로 상한을 못박았다. 댓글 정렬은 게시글 목록(최신순, FR-002)과 달리 스펙에 명시가 없어 대화형 스레드의 자연스러운 읽기 순서인 작성순(오름차순)을 기본값으로 채택했다.
 
 - [ ] **T012** — Comment 유스케이스 구현 (T011, T005 완료 후)
   - 구현 파일: `comment/application/CreateCommentUseCase.kt`, `ListCommentsUseCase.kt`, `DeleteCommentUseCase.kt`
