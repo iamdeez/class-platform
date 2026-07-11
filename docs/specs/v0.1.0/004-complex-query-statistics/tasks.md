@@ -1,0 +1,124 @@
+# Tasks: complex-query-statistics
+
+> Branch: 004-complex-query-statistics | Date: 2026-07-12 | Plan: [plan.md](./plan.md)
+
+## 목차
+
+- [전제 조건](#전제-조건)
+- [태스크 목록](#태스크-목록)
+- [구현 완료 기준](#구현-완료-기준)
+
+## 전제 조건
+
+- [x] spec.md의 모든 `[NEEDS CLARIFICATION]` 항목이 해소되었는가? — 미결 사항 없음.
+- [x] plan.md의 Constitution Gates가 모두 통과(또는 예외 기재)되었는가? — 5개 조항 모두 통과.
+- [x] CHANGES.md에서 이전 작업의 "후속 작업 시 주의사항"을 확인했는가? — 003 완료 후 "좋아요 0건 게시글 랭킹 부재", "Redis 동기화 유실 가능성" 등을 확인했다. 004는 001의 MySQL(Course/Enrollment)만 다루므로 002/003(MongoDB/Redis)과는 직접적인 연관이 없다.
+
+## 태스크 목록
+
+> `[P]` 표시: 이전 태스크와 병렬 실행 가능. 의존 관계가 있는 태스크는 반드시 선행 태스크 완료 후 실행한다.
+
+### Phase 1. 기반 작업 — Enrollment 도메인 확장
+
+- [ ] **T001** — EnrollmentStatus 확장 + Enrollment 도메인 모델 수정
+  - 구현 파일: `enrollment/domain/EnrollmentStatus.kt`(수정), `enrollment/domain/Enrollment.kt`(수정)
+  - 관련 요구사항: `FR-004`, `FR-006`, `FR-007`
+  - 상세: `EnrollmentStatus`에 `COMPLETED` 추가, `CourseStatus.canTransitionTo()`와 동일한 패턴으로 전이표 캡슐화(`ACTIVE→COMPLETED`, `ACTIVE→CANCELLED`만 허용). `Enrollment`에 `price: BigDecimal` 필드 추가(`create()`/`reconstitute()` 시그니처 변경), `complete()` 메서드 추가(전이 위반 시 `InvalidEnrollmentStatusException`). 기존 `cancel()`도 새 전이표 기반으로 재작성
+  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다. `Enrollment.reconstitute()` 호출부(테스트 fixture 포함) 전수 확인 및 수정
+
+- [ ] **T002** `[P]` — Gradle 의존성 추가
+  - 구현 파일: `build.gradle.kts`
+  - 상세: `mybatis-spring-boot-starter` 추가(Spring Boot 3.3.4 호환 버전)
+  - 완료 기준: `./gradlew build` 성공
+
+- [ ] **T003** — V3 마이그레이션 작성 (T002와 무관, 병렬 가능) `[P]`
+  - 구현 파일: `src/main/resources/db/migration/V3__add_enrollment_price_and_completed_status.sql`
+  - 관련 요구사항: `FR-007`
+  - 상세: `enrollment.price DECIMAL(10,2) NOT NULL DEFAULT 0` 추가 후, `UPDATE enrollment e JOIN course c ON e.course_id = c.id SET e.price = c.price`로 기존 행 백필. `status` 컬럼은 `VARCHAR(20)`이라 `COMPLETED` 값 저장에 스키마 변경 불필요
+  - 완료 기준: `./gradlew bootRun` 시 Flyway 마이그레이션이 오류 없이 적용된다
+
+### Phase 2. 핵심 구현 — Enrollment 확장
+
+- [ ] **T004** — EnrollUseCase 수정: 가격 스냅샷 전달 (T001, T003 완료 후)
+  - 구현 파일: `enrollment/application/EnrollUseCase.kt`(수정)
+  - 관련 요구사항: `FR-007`
+  - 상세: 기존에 조회하던 `course.price`를 `Enrollment.create(courseId, userId, course.price)`에 전달
+  - 완료 기준: 기존 `EnrollUseCaseTest` 수정 + 가격이 정확히 스냅샷되는지 검증하는 케이스 추가, 단위 테스트 통과
+
+- [ ] **T005** — EnrollmentJpaEntity/RepositoryImpl 매핑 갱신 (T001, T003 완료 후, T004와 병렬 가능) `[P]`
+  - 구현 파일: `enrollment/infrastructure/EnrollmentJpaEntity.kt`(수정), `enrollment/infrastructure/EnrollmentRepositoryImpl.kt`(수정)
+  - 관련 요구사항: `FR-007`
+  - 상세: `price` 컬럼 매핑 추가, 도메인 ↔ JPA 엔티티 변환에 반영
+  - 완료 기준: Testcontainers 통합 테스트로 `price` 저장·조회 왕복 확인
+
+- [ ] **T006** — CompleteEnrollmentUseCase 구현 (T001, T005 완료 후)
+  - 구현 파일: `enrollment/application/CompleteEnrollmentUseCase.kt`(신규)
+  - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`
+  - 상세: `enrollmentRepository.findById()`(404) → `courseRepository.findById(enrollment.courseId)`(404) → `course.instructorId == requesterId` 검증(403) → `enrollment.complete()`(전이 위반 시 409) → `save()`
+  - 완료 기준: 단위 테스트(MockK)로 정상 완료·404·403·409(이미 취소/이미 완료) 케이스 모두 통과
+
+- [ ] **T007** — EnrollmentController에 완료 처리 엔드포인트 추가 (T006 완료 후)
+  - 구현 파일: `enrollment/presentation/EnrollmentController.kt`(수정), `enrollment/presentation/dto/EnrollmentDtos.kt`(수정)
+  - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`
+  - 상세: `POST /api/enrollments/{enrollmentId}/complete` 추가
+  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인
+
+### Phase 3. 핵심 구현 — Statistics
+
+- [ ] **T008** — CourseRepository.findAllByInstructorId() 추가 (T002와 무관, 병렬 가능) `[P]`
+  - 구현 파일: `course/domain/CourseRepository.kt`(수정), `course/infrastructure/CourseRepositoryImpl.kt`(수정)
+  - 관련 요구사항: `FR-001`
+  - 상세: 강사 소유 강의 목록 조회(상태 무관, DRAFT 포함 — 대시보드는 강사 본인 것이므로 공개 여부와 무관하게 전부 보여줌)
+  - 완료 기준: Testcontainers 통합 테스트로 강사별 강의 목록 조회 확인
+
+- [ ] **T009** — CourseStatistics 값 객체 + CourseStatisticsRepository 포트 (T002 완료 후)
+  - 구현 파일: `statistics/domain/CourseStatistics.kt`(신규), `statistics/domain/CourseStatisticsRepository.kt`(신규)
+  - 관련 요구사항: `FR-001`, `FR-002`
+  - 상세: `CourseStatistics(courseId, title, studentCount, revenue, completionRate, cancellationRate)`. 포트는 `findAllByInstructorId(instructorId): List<CourseStatistics>`, `findByCourseId(courseId): CourseStatistics?`
+  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다
+
+- [ ] **T010** — CourseStatisticsMapper(MyBatis) + CourseStatisticsRepositoryImpl (T002, T003, T009 완료 후)
+  - 구현 파일: `statistics/infrastructure/CourseStatisticsMapper.kt`(신규), `statistics/infrastructure/resources/CourseStatisticsMapper.xml`(신규), `statistics/infrastructure/CourseStatisticsRepositoryImpl.kt`(신규)
+  - 관련 요구사항: `FR-001`, `FR-002`, `NFR-001`
+  - 상세: plan.md의 GROUP BY 집계 쿼리(`CASE WHEN` 조건부 카운트/합계)를 MyBatis Mapper로 구현. `CourseStatisticsRepositoryImpl`이 원시 카운트를 받아 `completionRate`/`cancellationRate`를 계산(분모 0 방어)
+  - 완료 기준: Testcontainers 통합 테스트로 다양한 상태 조합(ACTIVE/COMPLETED/CANCELLED 혼합)에서 집계 값이 정확한지 확인. 수강생이 없는 강의의 0/0 방어 케이스 포함
+
+- [ ] **T011** — GetInstructorStatisticsUseCase, GetCourseStatisticsUseCase (T010 완료 후)
+  - 구현 파일: `statistics/application/GetInstructorStatisticsUseCase.kt`(신규), `statistics/application/GetCourseStatisticsUseCase.kt`(신규)
+  - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`
+  - 상세: `GetCourseStatisticsUseCase`는 `courseRepository.findById()`로 소유권을 먼저 검증(403/404) 후 통계 조회
+  - 완료 기준: 단위 테스트(MockK)로 정상 조회·403·404 케이스 통과
+
+- [ ] **T012** — StatisticsController 및 DTO 구현 (T011 완료 후)
+  - 구현 파일: `statistics/presentation/StatisticsController.kt`(신규), `statistics/presentation/dto/StatisticsDtos.kt`(신규)
+  - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`
+  - 상세: `GET /api/instructors/me/statistics`, `GET /api/courses/{courseId}/statistics`
+  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인
+
+### Phase 4. 테스트 (SC-XXX 검증)
+
+- [ ] **T013** — SC-001, SC-002, SC-003 통합 테스트 (T012 완료 후)
+  - 테스트 파일: `statistics/presentation/StatisticsControllerIT.kt`
+  - 검증 대상: `SC-001`, `SC-002`, `SC-003`
+  - 시나리오: 강사가 여러 강의·다양한 수강 상태를 시드한 뒤 목록/상세 통계 조회, 비담당 강사의 조회 시도 시 403 확인
+
+- [ ] **T014** — SC-004, SC-005, SC-006 통합 테스트 (T007 완료 후, T013과 병렬 가능) `[P]`
+  - 테스트 파일: `enrollment/presentation/EnrollmentCompletionIT.kt`
+  - 검증 대상: `SC-004`, `SC-005`, `SC-006`
+  - 시나리오: 정상 완료 처리 후 상태 확인, 비담당 강사의 완료 처리 시도(403), 이미 취소/완료된 수강 재완료 시도(409)
+
+- [ ] **T015** — SC-007, SC-008 통합 테스트 (T010 완료 후, 위 태스크들과 병렬 가능) `[P]`
+  - 테스트 파일: `statistics/infrastructure/CourseStatisticsRepositoryImplIT.kt`
+  - 검증 대상: `SC-007`, `SC-008`
+  - 시나리오: 강의 가격 변경 전후로 신청된 두 수강의 매출 합이 각 신청 시점 가격 기준으로 정확한지 확인, 취소된 수강이 매출에서 제외되는지 확인
+
+- [ ] **T016** `[P]` — SC-009, SC-010 단위 테스트
+  - 테스트 파일: `statistics/infrastructure/CourseStatisticsRepositoryImplTest.kt` (또는 비율 계산 로직을 별도 함수로 분리 시 그 단위 테스트)
+  - 검증 대상: `SC-009`, `SC-010`
+  - 시나리오: 완료율·취소율 계산 산식 검증(정상 케이스 + 분모 0 케이스)
+
+## 구현 완료 기준
+
+- [ ] 모든 태스크 체크박스가 완료 처리되었다.
+- [ ] `./gradlew test`가 전체 PASSED를 반환한다.
+- [ ] `git status`에 의도치 않은 파일이 없다.
