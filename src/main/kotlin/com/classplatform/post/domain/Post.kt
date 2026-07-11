@@ -61,6 +61,18 @@ class Post private constructor(
 		this.viewCount = viewCount
 	}
 
+	fun toSnapshot(): PostSnapshot = PostSnapshot(
+		id = requireNotNull(id) { "cannot snapshot a transient post" },
+		title = title,
+		body = body,
+		authorId = authorId.value,
+		aiStatus = aiStatus,
+		tags = tags,
+		summary = summary,
+		likeCount = likeCount,
+		viewCount = viewCount,
+	)
+
 	companion object {
 		const val MAX_TAGS = 5
 		const val MAX_SUMMARY_LENGTH = 200
@@ -88,5 +100,17 @@ class Post private constructor(
 			likeCount: Long = 0,
 			viewCount: Long = 0,
 		): Post = Post(id, title, body, authorId, aiStatus, tags, summary, likeCount, viewCount)
+
+		fun fromSnapshot(snapshot: PostSnapshot): Post = reconstitute(
+			id = snapshot.id,
+			title = snapshot.title,
+			body = snapshot.body,
+			authorId = UserId(snapshot.authorId),
+			aiStatus = snapshot.aiStatus,
+			tags = snapshot.tags,
+			summary = snapshot.summary,
+			likeCount = snapshot.likeCount,
+			viewCount = snapshot.viewCount,
+		)
 	}
 }

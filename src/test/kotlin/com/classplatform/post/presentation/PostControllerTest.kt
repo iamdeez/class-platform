@@ -6,6 +6,7 @@ import com.classplatform.post.application.CreatePostUseCase
 import com.classplatform.post.application.DeletePostUseCase
 import com.classplatform.post.application.GetPostUseCase
 import com.classplatform.post.application.ListPostsUseCase
+import com.classplatform.post.application.PostDetail
 import com.classplatform.post.application.UpdatePostUseCase
 import com.classplatform.post.domain.Post
 import com.classplatform.post.domain.PostAiStatus
@@ -96,7 +97,7 @@ class PostControllerTest {
 
 	@Test
 	fun `존재하는 게시글을 조회하면 200을 반환한다`() {
-		every { getPostUseCase.execute("post-1") } returns samplePost()
+		every { getPostUseCase.execute("post-1") } returns PostDetail(samplePost(), likeCount = 0L, viewCount = 0L)
 
 		mockMvc.perform(get("/api/posts/post-1"))
 			.andExpect(status().isOk)

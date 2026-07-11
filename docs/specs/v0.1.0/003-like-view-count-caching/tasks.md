@@ -62,11 +62,14 @@
   - 완료 기준: 각 유스케이스 단위 테스트(MockK로 `PostPopularityPort` 대체) 통과. 존재하지 않는 게시글에 대한 404(`PostNotFoundException`) 케이스 포함 — 4건 통과
   - **구현 노트**: `addLike()`/`removeLike()`의 반환값(신규 변경 여부)으로 분기하지 않고, 호출 후 항상 `getLikeCount()`로 최종 상태를 다시 조회해 응답한다 — 이미 좋아요한 상태에서 재요청해도(FR-003) 멱등하게 동일한 응답을 반환하도록 하기 위함이다.
 
-- [ ] **T007** — GetPostUseCase 수정: 캐시 조회 + 조회수 증가 + 장애 폴백 (T003, T005 완료 후)
-  - 구현 파일: `post/application/GetPostUseCase.kt`(수정), `post/application/PostDetail.kt`(신규, 값 객체)
+- [x] **T007** — GetPostUseCase 수정: 캐시 조회 + 조회수 증가 + 장애 폴백 (T003, T005 완료 후)
+  - 구현 파일: `post/application/GetPostUseCase.kt`(수정), `post/application/PostDetail.kt`(신규, 값 객체), `post/domain/PostCachePort.kt`(신규), `post/domain/PostSnapshot.kt`(신규), `post/infrastructure/RedisPostCacheAdapter.kt`(신규), `post/domain/Post.kt`(수정 — `toSnapshot()`/`fromSnapshot()` 추가), `post/presentation/PostController.kt`(최소 수정)
   - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`, `NFR-002`, `NFR-005`
   - 상세: 반환 타입을 `Post`에서 `PostDetail(post, likeCount, viewCount)`로 변경. `incrementViewCount()`는 실패해도 조회 자체를 막지 않도록 예외를 흡수. `getLikeCount()`/`getViewCount()` 호출이 예외를 던지면 `post.likeCount`/`post.viewCount`(저장된 스냅샷)로 폴백
-  - 완료 기준: 단위 테스트(MockK)로 (1) 정상 경로에서 Redis 실시간 값 사용, (2) `PostPopularityPort` 예외 발생 시 스냅샷 값으로 폴백(SC-007 단위 수준), (3) 조회수 증가 호출 검증
+  - 완료 기준: 단위 테스트(MockK)로 (1) 정상 경로에서 Redis 실시간 값 사용, (2) `PostPopularityPort` 예외 발생 시 스냅샷 값으로 폴백(SC-007 단위 수준), (3) 조회수 증가 호출 검증 — `GetPostUseCaseTest` 3건 통과
+  - **구현 중 발견한 이슈(범위 확장)**: plan.md는 "게시글 상세 캐시(`post:cache:{postId}`)"를 언급했지만, T003의 `PostPopularityPort`에는 이를 담을 메서드가 없었다(좋아요/조회수/랭킹만 스코프). NFR-005(캐시 우선 조회)를 구현하려면 반드시 필요해, 이번 태스크에서 별도 `PostCachePort`(도메인)·`PostSnapshot`(도메인 값 객체)·`RedisPostCacheAdapter`(infra, Jackson `ObjectMapper` + TTL)를 신규로 추가했다. `PostSnapshot.authorId`는 `UserId`(값 클래스) 대신 `Long`으로 뒀다 — Jackson의 Kotlin 인라인 값 클래스 직렬화 지원이 불확실해 리스크를 피했다. `Post.toSnapshot()`/`Post.fromSnapshot()`으로 변환 책임을 도메인에 두어, Jackson·Redis 타입은 여전히 infrastructure 밖으로 새지 않는다(P-001 유지).
+  - **컴파일 유지를 위한 최소 수정**: `GetPostUseCase`의 반환 타입 변경으로 `PostController.get()`과 `PostControllerTest`의 관련 스텁이 깨져, 두 곳을 `PostDetail`에 맞춰 최소 수정했다(`detail.post.toResponse()`). `PostResponse`에 `likeCount`/`viewCount` 필드를 추가하는 본격적인 확장은 T010에서 진행한다 — 지금은 빌드를 그린으로 유지하기 위한 범위다.
+  - **추가 설정**: `application.yml`/`.env.example`에 `post-detail-cache.ttl-seconds`(기본 300초) 설정값 추가.
 
 - [ ] **T008** — ListPopularPostsUseCase 구현 (T003, T005 완료 후, T007과 병렬 가능) `[P]`
   - 구현 파일: `post/application/ListPopularPostsUseCase.kt`, `post/application/PopularPost.kt`(값 객체)

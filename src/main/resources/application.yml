@@ -25,3 +25,6 @@ ai-enrichment:
 
 popularity-cache:
   sync-interval-ms: ${POPULARITY_CACHE_SYNC_INTERVAL_MS:10000}
+
+post-detail-cache:
+  ttl-seconds: ${POST_DETAIL_CACHE_TTL_SECONDS:300}

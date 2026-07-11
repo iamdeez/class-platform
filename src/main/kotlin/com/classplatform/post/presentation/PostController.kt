@@ -67,8 +67,8 @@ class PostController(
 
 	@GetMapping("/{postId}")
 	fun get(@PathVariable postId: String): ResponseEntity<ApiResponse<PostResponse>> {
-		val post = getPostUseCase.execute(postId)
-		return ResponseEntity.ok(ApiResponse.success(post.toResponse()))
+		val detail = getPostUseCase.execute(postId)
+		return ResponseEntity.ok(ApiResponse.success(detail.post.toResponse()))
 	}
 
 	@PatchMapping("/{postId}")
