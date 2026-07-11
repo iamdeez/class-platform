@@ -40,11 +40,11 @@
   - 완료 기준: 단위 테스트에서 `StringRedisTemplate`을 MockK로 대체해 각 메서드가 올바른 Redis 커맨드(opsForSet/opsForValue/opsForZSet)를 호출하는지 검증 (실제 Redis 연결 없음) — `RedisPostPopularityAdapterTest` 11건 통과
   - **구현 노트**: `userId`는 도메인 전체에서 일관되게 쓰는 `UserId` 값 객체를 그대로 포트 시그니처에 사용했다(plan.md에는 명시하지 않았으나 `Post.authorId`와 동일한 타입 일관성 유지). `getViewCount()`는 저장된 값이 없으면(신규 게시글) `null`을 0으로 처리해 방어한다.
 
-- [ ] **T004** — Post 도메인 모델 확장 (T003과 무관, 병렬 가능) `[P]`
+- [x] **T004** — Post 도메인 모델 확장 (T003과 무관, 병렬 가능) `[P]`
   - 구현 파일: `post/domain/Post.kt`(수정)
   - 관련 요구사항: `FR-004`, `FR-006`
   - 상세: `likeCount: Long`, `viewCount: Long` 필드 추가(기본값 0). `register()`는 항상 0으로 시작. `reconstitute()`에 `likeCount: Long = 0, viewCount: Long = 0` 파라미터 추가(기본값으로 기존 8개 호출부 하위 호환). `applyPopularitySnapshot(likeCount: Long, viewCount: Long)` 메서드로 두 값을 함께 갱신(음수 방지 `require`)
-  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다. `applyPopularitySnapshot()` 음수 검증 단위 테스트 통과
+  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다. `applyPopularitySnapshot()` 음수 검증 단위 테스트 통과 — `PostTest`에 4건 추가(0 시작, 스냅샷 반영, 좋아요/조회수 음수 거부 각각), 기존 8개 `reconstitute()` 호출부 모두 수정 없이 컴파일됨을 확인
 
 - [ ] **T005** — PostRepository 확장 + MongoDB 매핑 갱신 (T004 완료 후)
   - 구현 파일: `post/domain/PostRepository.kt`(수정), `post/infrastructure/PostMongoDocument.kt`(수정), `post/infrastructure/PostMongoRepository.kt`(수정), `post/infrastructure/PostRepositoryImpl.kt`(수정)

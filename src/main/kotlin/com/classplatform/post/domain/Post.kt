@@ -10,6 +10,8 @@ class Post private constructor(
 	aiStatus: PostAiStatus,
 	tags: List<String>,
 	summary: String?,
+	likeCount: Long,
+	viewCount: Long,
 ) {
 	var title: String = title
 		private set
@@ -21,10 +23,16 @@ class Post private constructor(
 		private set
 	var summary: String? = summary
 		private set
+	var likeCount: Long = likeCount
+		private set
+	var viewCount: Long = viewCount
+		private set
 
 	init {
 		require(title.isNotBlank()) { "title must not be blank" }
 		require(body.isNotBlank()) { "body must not be blank" }
+		require(likeCount >= 0) { "likeCount must not be negative: $likeCount" }
+		require(viewCount >= 0) { "viewCount must not be negative: $viewCount" }
 	}
 
 	fun updateContent(title: String, body: String) {
@@ -46,6 +54,13 @@ class Post private constructor(
 		this.aiStatus = PostAiStatus.FAILED
 	}
 
+	fun applyPopularitySnapshot(likeCount: Long, viewCount: Long) {
+		require(likeCount >= 0) { "likeCount must not be negative: $likeCount" }
+		require(viewCount >= 0) { "viewCount must not be negative: $viewCount" }
+		this.likeCount = likeCount
+		this.viewCount = viewCount
+	}
+
 	companion object {
 		const val MAX_TAGS = 5
 		const val MAX_SUMMARY_LENGTH = 200
@@ -58,6 +73,8 @@ class Post private constructor(
 			aiStatus = PostAiStatus.PENDING,
 			tags = emptyList(),
 			summary = null,
+			likeCount = 0,
+			viewCount = 0,
 		)
 
 		fun reconstitute(
@@ -68,6 +85,8 @@ class Post private constructor(
 			aiStatus: PostAiStatus,
 			tags: List<String>,
 			summary: String?,
-		): Post = Post(id, title, body, authorId, aiStatus, tags, summary)
+			likeCount: Long = 0,
+			viewCount: Long = 0,
+		): Post = Post(id, title, body, authorId, aiStatus, tags, summary, likeCount, viewCount)
 	}
 }
