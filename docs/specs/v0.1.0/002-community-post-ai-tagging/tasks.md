@@ -94,11 +94,12 @@
   - 완료 기준: Testcontainers 통합 테스트로 저장·조회 왕복 확인 — `CommentRepositoryImplIT` 3건 통과
   - **구현 노트**: `Comment`는 수정이 없어 `CommentMongoDocument`에 `updatedAt`을 두지 않았고, `Post.save()`의 createdAt 보존 트릭(T005 이슈 1)도 필요 없다(매번 신규 생성·삭제만 존재). NFR-002("댓글 목록도 최대 100건까지 반환")를 인터페이스 계약 표에는 없는 요구지만 코드 레벨에서 만족시키기 위해, 별도 페이지네이션 파라미터 없이 `findTop100ByPostIdOrderByCreatedAtAsc` 파생 쿼리로 상한을 못박았다. 댓글 정렬은 게시글 목록(최신순, FR-002)과 달리 스펙에 명시가 없어 대화형 스레드의 자연스러운 읽기 순서인 작성순(오름차순)을 기본값으로 채택했다.
 
-- [ ] **T012** — Comment 유스케이스 구현 (T011, T005 완료 후)
+- [x] **T012** — Comment 유스케이스 구현 (T011, T005 완료 후)
   - 구현 파일: `comment/application/CreateCommentUseCase.kt`, `ListCommentsUseCase.kt`, `DeleteCommentUseCase.kt`
   - 관련 요구사항: `FR-006`, `FR-007`, `FR-008`
   - 상세: `CreateCommentUseCase`는 `PostRepository`로 게시글 존재 여부를 확인한다
-  - 완료 기준: 각 유스케이스 단위 테스트(MockK) 통과
+  - 완료 기준: 각 유스케이스 단위 테스트(MockK) 통과 — 3개 파일 7건 통과
+  - **구현 노트**: `CreateCommentUseCase`도 CHANGES.md 전제 조건에서 확인한 대로 `content`를 `HtmlSanitizer`로 sanitize한다(001·T007과 동일 관례). `ListCommentsUseCase`는 게시글 존재 여부를 확인하지 않는다 — plan.md 인터페이스 계약 표에 이 엔드포인트의 404 분기가 없고, 존재하지 않는 postId는 자연스럽게 빈 목록으로 응답되므로 별도 예외 처리가 불필요하다고 판단했다.
 
 - [ ] **T013** — CommentController 및 DTO 구현 (T012 완료 후)
   - 구현 파일: `comment/presentation/CommentController.kt`, `comment/presentation/dto/*.kt`
