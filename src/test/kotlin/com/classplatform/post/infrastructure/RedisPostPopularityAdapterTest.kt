@@ -1,10 +1,12 @@
 package com.classplatform.post.infrastructure
 
 import com.classplatform.common.UserId
+import com.classplatform.post.domain.PostRanking
 import io.mockk.every
 import io.mockk.mockk
 import io.mockk.verify
 import org.junit.jupiter.api.Test
+import org.springframework.data.redis.core.DefaultTypedTuple
 import org.springframework.data.redis.core.SetOperations
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.data.redis.core.ValueOperations
@@ -84,12 +86,15 @@ class RedisPostPopularityAdapterTest {
 	}
 
 	@Test
-	fun `getTopPostIds은 ZREVRANGE 결과 순서를 그대로 유지한다`() {
-		every { zSetOps.reverseRange("post:popular", 0, 9) } returns linkedSetOf("post-2", "post-1")
+	fun `getTopPosts은 ZREVRANGE WITHSCORES 결과 순서와 점수를 그대로 유지한다`() {
+		every { zSetOps.reverseRangeWithScores("post:popular", 0, 9) } returns linkedSetOf<ZSetOperations.TypedTuple<String>>(
+			DefaultTypedTuple("post-2", 5.0),
+			DefaultTypedTuple("post-1", 3.0),
+		)
 
-		val result = adapter.getTopPostIds(10)
+		val result = adapter.getTopPosts(10)
 
-		assertEquals(listOf("post-2", "post-1"), result)
+		assertEquals(listOf(PostRanking("post-2", 5L), PostRanking("post-1", 3L)), result)
 	}
 
 	@Test

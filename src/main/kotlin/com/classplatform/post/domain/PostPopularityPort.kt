@@ -17,7 +17,7 @@ interface PostPopularityPort {
 
 	fun refreshRanking(postId: String, likeCount: Long)
 
-	fun getTopPostIds(limit: Int): List<String>
+	fun getTopPosts(limit: Int): List<PostRanking>
 
 	fun markDirty(postId: String)
 

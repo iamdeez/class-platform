@@ -71,11 +71,12 @@
   - **컴파일 유지를 위한 최소 수정**: `GetPostUseCase`의 반환 타입 변경으로 `PostController.get()`과 `PostControllerTest`의 관련 스텁이 깨져, 두 곳을 `PostDetail`에 맞춰 최소 수정했다(`detail.post.toResponse()`). `PostResponse`에 `likeCount`/`viewCount` 필드를 추가하는 본격적인 확장은 T010에서 진행한다 — 지금은 빌드를 그린으로 유지하기 위한 범위다.
   - **추가 설정**: `application.yml`/`.env.example`에 `post-detail-cache.ttl-seconds`(기본 300초) 설정값 추가.
 
-- [ ] **T008** — ListPopularPostsUseCase 구현 (T003, T005 완료 후, T007과 병렬 가능) `[P]`
-  - 구현 파일: `post/application/ListPopularPostsUseCase.kt`, `post/application/PopularPost.kt`(값 객체)
+- [x] **T008** — ListPopularPostsUseCase 구현 (T003, T005 완료 후, T007과 병렬 가능) `[P]`
+  - 구현 파일: `post/application/ListPopularPostsUseCase.kt`, `post/application/PopularPost.kt`(값 객체), `post/domain/PostRanking.kt`(신규 값 객체), `post/domain/PostPopularityPort.kt`(수정), `post/infrastructure/RedisPostPopularityAdapter.kt`(수정)
   - 관련 요구사항: `FR-007`, `NFR-003`
-  - 상세: `PostPopularityPort.getTopPostIds(10)` → `PostRepository.findAllByIds()`로 배치 조회 → Redis가 반환한 순서(좋아요 수 내림차순)대로 재정렬
-  - 완료 기준: 단위 테스트(MockK)로 정렬 순서 보존과 N+1 미발생(배치 조회 1회 호출) 확인
+  - 상세: `PostPopularityPort.getTopPosts(10)` → `PostRepository.findAllByIds()`로 배치 조회 → Redis가 반환한 순서(좋아요 수 내림차순)대로 재정렬
+  - 완료 기준: 단위 테스트(MockK)로 정렬 순서 보존과 N+1 미발생(배치 조회 1회 호출) 확인 — `ListPopularPostsUseCaseTest` 2건 통과
+  - **구현 중 발견한 이슈(T003 수정)**: T003에서 만든 `getTopPostIds(limit): List<String>`는 postId만 반환해, 인기 목록 응답에 필요한 `likeCount`(plan.md 인터페이스 계약)를 얻으려면 게시글마다 별도로 `getLikeCount()`를 호출해야 했다. Redis `ZREVRANGE ... WITHSCORES`가 멤버와 점수를 한 커맨드로 함께 반환하므로, `getTopPostIds` 대신 `getTopPosts(limit): List<PostRanking>`(postId+likeCount)로 포트 시그니처를 변경해 이 왕복을 없앴다. `RedisPostPopularityAdapterTest`의 관련 테스트도 `reverseRangeWithScores` + `DefaultTypedTuple`로 갱신했다.
 
 - [ ] **T009** — PopularityCacheSyncScheduler 구현 (T003, T005 완료 후)
   - 구현 파일: `post/infrastructure/PopularityCacheSyncScheduler.kt`, `common/AiEnrichmentConfig.kt` 또는 별도 `SchedulingConfig.kt`(`@EnableScheduling` 추가)

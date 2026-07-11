@@ -2,6 +2,7 @@ package com.classplatform.post.infrastructure
 
 import com.classplatform.common.UserId
 import com.classplatform.post.domain.PostPopularityPort
+import com.classplatform.post.domain.PostRanking
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 
@@ -32,8 +33,15 @@ class RedisPostPopularityAdapter(
 		redisTemplate.opsForZSet().add(POPULAR_KEY, postId, likeCount.toDouble())
 	}
 
-	override fun getTopPostIds(limit: Int): List<String> =
-		redisTemplate.opsForZSet().reverseRange(POPULAR_KEY, 0, (limit - 1).toLong())?.toList() ?: emptyList()
+	override fun getTopPosts(limit: Int): List<PostRanking> =
+		redisTemplate.opsForZSet()
+			.reverseRangeWithScores(POPULAR_KEY, 0, (limit - 1).toLong())
+			?.mapNotNull { tuple ->
+				val postId = tuple.value ?: return@mapNotNull null
+				val score = tuple.score ?: return@mapNotNull null
+				PostRanking(postId, score.toLong())
+			}
+			?: emptyList()
 
 	override fun markDirty(postId: String) {
 		redisTemplate.opsForSet().add(DIRTY_KEY, postId)
