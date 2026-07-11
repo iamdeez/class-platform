@@ -33,11 +33,12 @@
 
 ### Phase 2. 핵심 구현 — 캐시 포트 및 도메인
 
-- [ ] **T003** — PostPopularityPort + RedisPostPopularityAdapter 구현 (T002 완료 후)
+- [x] **T003** — PostPopularityPort + RedisPostPopularityAdapter 구현 (T002 완료 후)
   - 구현 파일: `post/domain/PostPopularityPort.kt`(신규), `post/infrastructure/RedisPostPopularityAdapter.kt`(신규)
   - 관련 요구사항: `FR-001`~`FR-007`, `NFR-001`
   - 상세: 포트 메서드 — `addLike(postId, userId): Boolean`(신규 추가 여부), `removeLike(postId, userId): Boolean`, `isLiked(postId, userId): Boolean`, `getLikeCount(postId): Long`(SCARD), `incrementViewCount(postId): Long`(INCR), `getViewCount(postId): Long`, `refreshRanking(postId, likeCount)`(ZADD 절대값), `getTopPostIds(limit): List<String>`(ZREVRANGE), `markDirty(postId)`/`consumeDirty(): Set<String>`. 어댑터는 `StringRedisTemplate` 사용
-  - 완료 기준: 단위 테스트에서 `StringRedisTemplate`을 MockK로 대체해 각 메서드가 올바른 Redis 커맨드(opsForSet/opsForValue/opsForZSet)를 호출하는지 검증 (실제 Redis 연결 없음)
+  - 완료 기준: 단위 테스트에서 `StringRedisTemplate`을 MockK로 대체해 각 메서드가 올바른 Redis 커맨드(opsForSet/opsForValue/opsForZSet)를 호출하는지 검증 (실제 Redis 연결 없음) — `RedisPostPopularityAdapterTest` 11건 통과
+  - **구현 노트**: `userId`는 도메인 전체에서 일관되게 쓰는 `UserId` 값 객체를 그대로 포트 시그니처에 사용했다(plan.md에는 명시하지 않았으나 `Post.authorId`와 동일한 타입 일관성 유지). `getViewCount()`는 저장된 값이 없으면(신규 게시글) `null`을 0으로 처리해 방어한다.
 
 - [ ] **T004** — Post 도메인 모델 확장 (T003과 무관, 병렬 가능) `[P]`
   - 구현 파일: `post/domain/Post.kt`(수정)
