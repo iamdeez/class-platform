@@ -67,11 +67,13 @@
   - 완료 기준: 각 유스케이스 단위 테스트(MockK) 통과 — 6개 파일 14건 통과
   - **구현 노트**: `CreatePostUseCase`/`UpdatePostUseCase`는 001에서 확립한 관례대로 본문(`body`)을 `HtmlSanitizer`로 sanitize한다(title은 Course와 동일하게 sanitize 대상에서 제외). `PostRepository`에 `deleteById(id)`를 추가했다(`PostRepositoryImpl`은 `MongoRepository.deleteById` 위임). `EnrichPostUseCase`는 아직 어디에서도 호출되지 않는 독립 유스케이스로, PostCreatedEvent 리스너(T008)가 연결한다. AI 태깅 실패 처리는 `AiTaggingFailedException`뿐 아니라 `Exception` 전체를 잡아 FAILED로 흡수한다 — AI가 태그 5개·요약 200자 불변식을 어겨 `Post.markEnrichmentCompleted()`(T004)가 던지는 경우까지 게시글 자체에는 영향이 없어야 하기 때문(NFR-004 장애 격리).
 
-- [ ] **T008** — 비동기 이벤트 발행/구독 연결 (T007 완료 후)
+- [x] **T008** — 비동기 이벤트 발행/구독 연결 (T007 완료 후)
   - 구현 파일: `post/infrastructure/PostCreatedEventListener.kt`, `post/domain/event/PostCreatedEvent.kt`
   - 관련 요구사항: `NFR-001`
   - 상세: `CreatePostUseCase`가 저장 직후 `PostCreatedEvent` 발행, `@Async` 리스너가 `EnrichPostUseCase` 호출
-  - 완료 기준: 통합 테스트로 게시글 생성 응답이 AI 처리 완료를 기다리지 않음을 확인
+  - 완료 기준: 통합 테스트로 게시글 생성 응답이 AI 처리 완료를 기다리지 않음을 확인 — `PostCreatedEventIT` 통과
+  - **구현 노트**: `CreatePostUseCase`는 `ApplicationEventPublisher`를 주입받아 `postRepository.save()` 직후 `PostCreatedEvent(postId, title, body)`를 발행하도록 수정했다(T007에서 만든 시그니처 변경, 기존 단위 테스트도 `eventPublisher` mock 추가로 갱신). `PostCreatedEventListener`는 `@Async` + `@EventListener`로 `EnrichPostUseCase`를 호출하며, `@EnableAsync`는 T003의 `AiEnrichmentConfig`가 이미 전역 적용 중이라 별도 설정이 필요 없었다.
+  - **테스트 설계 노트**: 완료 기준 검증은 HTTP 계층(T009 Controller)이 아직 없어 `PostControllerIT` 대신 `@SpringBootTest` 풀 컨텍스트로 `CreatePostUseCase`를 직접 호출하는 `PostCreatedEventIT`를 작성했다. `@MockkBean`으로 `AiTaggingPort`를 1초 지연 응답으로 교체해, (1) `CreatePostUseCase.execute()`가 500ms 이내로 즉시 반환되는지(NFR-001), (2) 그 후 비동기로 `aiStatus`가 실제로 PENDING→COMPLETED까지 전이되는지(수동 폴링, 3초 타임아웃)를 함께 검증했다. 풀 컨텍스트라 MySQL·MongoDB Testcontainers를 모두 띄운다(001의 JPA/Flyway + 002의 Mongo가 같은 `ClassPlatformApplication`에 공존하기 때문).
 
 - [ ] **T009** — PostController 및 DTO 구현 (T008 완료 후)
   - 구현 파일: `post/presentation/PostController.kt`, `post/presentation/dto/*.kt`
