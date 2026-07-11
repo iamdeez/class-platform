@@ -6,6 +6,7 @@ import com.classplatform.post.domain.PostAiStatus
 import com.classplatform.post.domain.PostCachePort
 import com.classplatform.post.domain.PostPopularityPort
 import com.classplatform.post.domain.PostRepository
+import com.classplatform.post.domain.PostSnapshot
 import com.classplatform.post.domain.exception.PostNotFoundException
 import io.mockk.every
 import io.mockk.just
@@ -73,5 +74,24 @@ class GetPostUseCaseTest {
 		every { postRepository.findById("post-1") } returns null
 
 		assertThrows<PostNotFoundException> { useCase.execute("post-1") }
+	}
+
+	@Test
+	fun `SC-009 캐시 히트 시 저장소를 다시 조회하지 않는다`() {
+		val cacheStore = mutableMapOf<String, PostSnapshot>()
+		every { postCachePort.get("post-1") } answers { cacheStore["post-1"] }
+		every { postCachePort.put(any()) } answers {
+			val snapshot = firstArg<PostSnapshot>()
+			cacheStore[snapshot.id] = snapshot
+		}
+		every { postRepository.findById("post-1") } returns storedPost()
+		every { postPopularityPort.incrementViewCount("post-1") } returns 1L
+		every { postPopularityPort.getLikeCount("post-1") } returns 0L
+		every { postPopularityPort.getViewCount("post-1") } returns 1L
+
+		useCase.execute("post-1")
+		useCase.execute("post-1")
+
+		verify(exactly = 1) { postRepository.findById("post-1") }
 	}
 }

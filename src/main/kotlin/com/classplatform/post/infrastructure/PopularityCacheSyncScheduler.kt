@@ -11,7 +11,10 @@ class PopularityCacheSyncScheduler(
 	private val postPopularityPort: PostPopularityPort,
 ) {
 
-	@Scheduled(fixedDelayString = "\${popularity-cache.sync-interval-ms}")
+	@Scheduled(
+		fixedDelayString = "\${popularity-cache.sync-interval-ms}",
+		initialDelayString = "\${popularity-cache.sync-interval-ms}",
+	)
 	fun sync() {
 		postPopularityPort.consumeDirty().forEach { postId ->
 			// 배치 내 한 게시글 동기화가 실패해도 나머지 게시글 처리를 계속한다.

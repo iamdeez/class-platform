@@ -27,7 +27,7 @@
 
 | 환경 | 목적 | 비고 |
 |---|---|---|
-| dev (로컬) | 개발·학습 목적, Docker Compose로 MySQL·MongoDB 컨테이너 기동 | 구현 완료 (001 T002, 002 T001) |
+| dev (로컬) | 개발·학습 목적, Docker Compose로 MySQL·MongoDB·Redis 컨테이너 기동 | 구현 완료 (001 T002, 002 T001, 003 T001) |
 | staging / prod | 없음 | 005 spec(CI/CD·배포)에서 계획 예정. 연습 프로젝트 특성상 실제 운영 환경은 없을 수 있음 |
 
 ## 2. 인프라 토폴로지
@@ -37,6 +37,7 @@
 ```
 [Spring Boot App] ──→ [MySQL 8.0 컨테이너]    (course, enrollment — Flyway 마이그레이션)
                   └──→ [MongoDB 8.0 컨테이너]  (post, comment — 스키마리스)
+                  └──→ [Redis 7(alpine) 컨테이너]  (post의 좋아요·조회수·인기 랭킹·상세 캐시)
                   └──→ [Claude API (외부, Anthropic)]  (post의 AI 태깅, 비동기)
 ```
 
@@ -46,9 +47,8 @@
 |---|---|---|---|
 | `class-platform-mysql` | Docker 컨테이너 (`mysql:8.0`) | course/enrollment 영속성 | `docker-compose.yml`. 포트 3306, healthcheck(`mysqladmin ping`) |
 | `class-platform-mongodb` | Docker 컨테이너 (`mongo:8.0`) | post/comment 영속성 | `docker-compose.yml`. 포트 27017, healthcheck(`mongosh ping`) |
+| `class-platform-redis` | Docker 컨테이너 (`redis:7-alpine`) | post의 좋아요(Set)·조회수(카운터)·인기 랭킹(ZSet)·상세 캐시(cache-aside) | `docker-compose.yml`. 포트 6379, healthcheck(`redis-cli ping`). 인증 없음(로컬 전용) |
 | Claude API | 외부 관리형 서비스 (Anthropic) | AI 태깅(카테고리 태그·요약) | `anthropic-java` SDK, `AnthropicOkHttpClient.fromEnv()`로 OS 환경변수(`ANTHROPIC_API_KEY`)에서 직접 자격증명을 읽는다(`application.yml` 미경유) |
-
-003 spec에서 Redis(캐싱)가 추가될 예정이다.
 
 ## 3. 배포 방식
 
@@ -63,6 +63,7 @@
 | 대상 | 재시도 방식 | 간격 | 동작 영향 |
 |---|---|---|---|
 | Claude API | `anthropic-java` SDK 기본 재시도(429/5xx 대상, 기본 2회) | SDK 기본값 | `EnrichPostUseCase`가 `AiTaggingFailedException`을 흡수해 `Post.aiStatus=FAILED`로 전이시키므로, 재시도 소진 후에도 게시글 등록 자체는 영향받지 않는다(NFR-004) |
+| Redis | 별도 재시도 로직 없음(Lettuce 기본 동작에 위임) | — | `PostPopularityPort`/`PostCachePort` 호출부(`GetPostUseCase` 등)가 `runCatching`으로 예외를 흡수해 Redis 장애 시에도 게시글 조회는 저장된 스냅샷 값으로 정상 응답한다(NFR-002) |
 | MySQL/MongoDB | 별도 재시도 로직 없음(Spring Boot 기본 커넥션 풀 동작에 위임) | — | 로컬 개발 환경 한정이라 별도 설계하지 않음 |
 
 ## 6. 로컬 개발 환경
@@ -74,7 +75,7 @@ Gradle Wrapper가 의존성을 자동 관리한다 (`./gradlew`).
 ### 실행
 
 ```bash
-docker compose up -d   # MySQL + MongoDB 컨테이너 기동
+docker compose up -d   # MySQL + MongoDB + Redis 컨테이너 기동
 ./gradlew bootRun
 ```
 
@@ -86,7 +87,7 @@ docker compose up -d   # MySQL + MongoDB 컨테이너 기동
 ./gradlew test
 ```
 
-통합 테스트는 Testcontainers로 MySQL·MongoDB를 자동 기동한다(로컬 `docker-compose.yml`과 별개, Docker 데몬만 필요).
+통합 테스트는 Testcontainers로 MySQL·MongoDB·Redis를 자동 기동한다(로컬 `docker-compose.yml`과 별개, Docker 데몬만 필요). Redis는 공식 Testcontainers 모듈이 없어 `GenericContainer("redis:7-alpine")`을 사용한다(`mysql`/`mongodb` Testcontainers 모듈이 core를 전이 의존성으로 가져와 별도 추가 불필요).
 
 ### 의존성 구조
 
@@ -96,6 +97,7 @@ docker compose up -d   # MySQL + MongoDB 컨테이너 기동
 | `spring-boot-starter-data-mongodb` | post/comment 영속성 | 공통 (002) |
 | `com.anthropic:anthropic-java` | Claude API 클라이언트 | 공통 (002) |
 | `org.jsoup:jsoup` | HTML sanitize (XSS 방어) | 공통 (001 후속) |
+| `spring-boot-starter-data-redis` | 좋아요·조회수·인기 랭킹·상세 캐시 | 공통 (003) |
 | `org.testcontainers:{mysql,mongodb,junit-jupiter}` | 통합 테스트 | test 전용 |
 
 ## 7. 배포 전 확인 체크리스트
@@ -107,8 +109,9 @@ docker compose up -d   # MySQL + MongoDB 컨테이너 기동
 | 항목 | 내용 | 영향 범위 | 관련 spec |
 |---|---|---|---|
 | CI/CD·배포 파이프라인 부재 | GitHub Actions, AWS 배포 등이 아직 없음 | 배포 전체 | 005 spec(미착수) |
-| Redis 미도입 | 캐싱 계층이 아직 없음 | 인프라 | 003 spec(설계 중) |
+| MyBatis 미도입 | 복잡 조회 계층이 아직 없음 | 인프라 | 004 spec(미착수) |
 | Claude API 실제 자격증명 필요 시점 | `ANTHROPIC_API_KEY` 없이도 앱은 기동하지만, 실제 AI 태깅 호출 시점에만 실패가 드러난다(빈 생성 시점 검증 없음) | `post` 도메인 AI 태깅 | `docs/specs/v0.1.0/002-community-post-ai-tagging/tasks.md` T003 |
+| Redis 인증·영속화 미설정 | 로컬 `redis:7-alpine` 컨테이너는 비밀번호 없이 기동하며 AOF/RDB 영속화 설정도 기본값(변경 없음)이다. 컨테이너 재시작 시 아직 MongoDB에 동기화되지 않은 좋아요·조회수 증분이 유실될 수 있다 | 인프라 전체(로컬 한정) | `docs/specs/v0.1.0/003-like-view-count-caching/` |
 
 ## 9. 갱신 이력
 
@@ -116,3 +119,4 @@ docker compose up -d   # MySQL + MongoDB 컨테이너 기동
 |---|---|---|---|
 | 2026-07-09 | (커밋 전) | 최초 작성 (인프라 구성 파일 없음) | — |
 | 2026-07-12 | `d8727d0` | 001(MySQL 컨테이너)·002(MongoDB 컨테이너, Claude API 외부 연동) 완료분을 반영해 전면 갱신. 001/002 구현 중 인프라가 실제로 변경됐음에도 이 문서가 갱신되지 않아 낡은 상태(파일 부재로 기술)로 남아있던 것을 003 설계 착수 전에 바로잡음 | `docs/specs/v0.1.0/001-class-enrollment-core/`, `docs/specs/v0.1.0/002-community-post-ai-tagging/` |
+| 2026-07-12 | `1f36131`(+Phase 4 미커밋분) | 003(Redis 컨테이너, 좋아요·조회수·인기 랭킹·상세 캐시) 완료분 반영. 인프라 토폴로지·컴포넌트 목록·연결 실패 재시도 동작·로컬 개발 환경·의존성 구조·알려진 제약(Redis 인증·영속화 미설정)을 실제 코드 기준으로 갱신 | `docs/specs/v0.1.0/003-like-view-count-caching/` |

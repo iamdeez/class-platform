@@ -1,5 +1,39 @@
 # Changes: v0.1.0
 
+## [003-like-view-count-caching] 구현 완료
+
+**변경 파일**:
+
+인프라/설정:
+- `docker-compose.yml`, `.env.example`: 로컬 Redis 7(alpine) 컨테이너(001의 MySQL, 002의 MongoDB와 병행)
+- `build.gradle.kts`: `spring-boot-starter-data-redis` 추가(Testcontainers Redis는 공식 모듈이 없으나 `mysql`/`mongodb` 모듈이 core `GenericContainer`를 전이 의존성으로 이미 가져와 별도 추가 불필요)
+- `src/main/resources/application.yml`: `spring.data.redis.{host,port}`, `popularity-cache.sync-interval-ms`(기본 10000), `post-detail-cache.ttl-seconds`(기본 300) 설정
+- `common/config/SchedulingConfig.kt` (신규): `@EnableScheduling`을 AI 태깅 전용 `AiEnrichmentConfig`와 분리한 별도 Configuration
+
+Post 도메인 확장(`post/*`):
+- `domain/Post.kt`: `likeCount`/`viewCount` 필드 추가(기본 0), `applyPopularitySnapshot()`(음수 방지), `toSnapshot()`/`fromSnapshot()`(캐시 변환). `reconstitute()`는 기본값 파라미터로 확장해 기존 8개 호출부 하위 호환 유지
+- `domain/{PostPopularityPort, PostCachePort, PostRanking, PostSnapshot}.kt` (신규): SDK/Redis 타입에 의존하지 않는 도메인 포트·값 객체
+- `domain/PostRepository.kt`: `findAllByIds(ids)` 추가(인기 목록 배치 조회, N+1 방지)
+- `infrastructure/RedisPostPopularityAdapter.kt` (신규): 좋아요는 Set의 `SCARD`를 카운트 단일 소스로 삼고(카운터 이중 관리로 인한 drift 방지), 랭킹은 `ZADD` 절대값 재기록(자연 치유)으로 관리
+- `infrastructure/RedisPostCacheAdapter.kt` (신규): 게시글 상세 캐시(cache-aside, Jackson 직렬화 + TTL)
+- `infrastructure/PopularityCacheSyncScheduler.kt` (신규): `@Scheduled` 주기 배치로 Redis dirty set을 MongoDB에 동기화. 개별 게시글 실패가 배치 전체를 막지 않도록 `runCatching`으로 격리
+- `application/{LikePost, UnlikePost, ListPopularPosts}UseCase.kt` (신규), `application/{LikeResult, PopularPost, PostDetail}.kt` (신규 값 객체)
+- `application/GetPostUseCase.kt`: 반환 타입을 `Post`에서 `PostDetail(post, likeCount, viewCount)`로 변경. 캐시 조회(cache-aside) → 조회수 증가(실패 무시) → 실시간 좋아요/조회수 조회(실패 시 저장된 스냅샷으로 폴백)
+- `presentation/PostController.kt`: `POST/DELETE /api/posts/{postId}/likes`, `GET /api/posts/popular` 추가. `PostResponse`에 `likeCount`/`viewCount` 필드 추가(기존 필드 유지)
+
+테스트:
+- 단위: `PostTest`(스냅샷 검증 4건 추가), `RedisPostPopularityAdapterTest`, `RedisPostCacheAdapterTest`, `{Like,Unlike}PostUseCaseTest`, `ListPopularPostsUseCaseTest`, `PopularityCacheSyncSchedulerTest`, `GetPostUseCaseTest`(캐시·폴백·SC-009 케이스 추가)
+- 슬라이스(`@WebMvcTest`): `PostControllerTest`(좋아요/취소/인기목록 케이스 추가)
+- 통합(Testcontainers MySQL+MongoDB+Redis): `PostRepositoryImplIT`(스냅샷·배치조회), `PostLikeIT`(SC-001/002), `PostLikeConcurrencyIT`(SC-008, 100 스레드 동시 좋아요), `PostControllerIT`(003-SC-003/004/005 추가), `PostPopularIT`(SC-006), `PostPopularityFailureIT`(SC-007, Redis 연결 불가 상황 재현)
+
+**후속 작업 시 주의사항**:
+- **Redis 도입 완료**: 001(MySQL)·002(MongoDB)에 이어 003부터 Redis가 세 번째 데이터 저장소로 추가되어, `@SpringBootTest` 풀 컨텍스트 통합 테스트는 이제 최대 3개의 Testcontainers(MySQL/MongoDB/Redis)를 함께 띄운다.
+- **좋아요 랭킹은 좋아요 0건 게시글을 포함하지 않는다**: `post:popular` ZSET은 `refreshRanking()`이 호출된 적 있는(즉 최소 1회 좋아요/취소를 받은) 게시글만 담는다. 인기 목록 API가 "좋아요 0건 게시글도 0점으로 노출"해야 하는 요구가 생기면 랭킹 갱신 로직을 게시글 생성 시점까지 확장해야 한다(현재는 spec 범위 밖으로 판단해 다루지 않음).
+- **인프로세스 동기화 배치의 유실 가능성**: `PopularityCacheSyncScheduler`는 Redis `post:dirty` set을 먼저 소비(제거)한 뒤 처리하므로, 처리 도중 예외가 나면 해당 게시글은 다음 좋아요/취소가 다시 `markDirty()`할 때까지 MongoDB 동기화가 미뤄질 수 있다. 002의 "인프로세스 비동기 이벤트 유실 가능성"과 같은 계열의 한계로 감수했다.
+- **테스트에서 Redis 연결 실패를 강제할 때는 `spring.data.redis.port`를 1(또는 다른 미사용 포트)로 오버라이드하는 방식이 `@MockkBean`으로 포트를 교체하는 방식보다 실제 어댑터 구현체를 그대로 통과시켜 더 faithful하다**(`PostPopularityFailureIT` 참조). 다만 `@Scheduled` 빈이 있는 컨텍스트에서 이 방식을 쓸 때는 스케줄 주기를 충분히 늦추지 않으면 백그라운드에서 커맨드 타임아웃 대기가 걸려 테스트 스위트 전체가 느려질 수 있다 — `PopularityCacheSyncScheduler`에 `initialDelayString`을 반드시 설정할 것(원래 `fixedDelayString`만 있으면 컨텍스트 기동 즉시 1회 실행된다).
+- **AI 처리 실패 후 재시도 미지원(002), 댓글 목록 페이지네이션 부재(002), Course 소유자 권한 체크 미구현(001)**: 여전히 해소되지 않은 채로 남아 있다.
+- **조회수 어뷰징 방지 미도입**: spec.md에서 범위 외로 명시한 대로, 동일 사용자의 짧은 시간 내 중복 조회를 걸러내는 로직이 없다.
+
 ## [002-community-post-ai-tagging] 구현 완료
 
 **변경 파일**:

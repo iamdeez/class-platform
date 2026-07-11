@@ -21,10 +21,12 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
+import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.MongoDBContainer
 import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
 import kotlin.system.measureTimeMillis
 import kotlin.test.assertTrue
 
@@ -42,6 +44,10 @@ class PostControllerIT {
 		@JvmStatic
 		val mongo = MongoDBContainer("mongo:8.0")
 
+		@Container
+		@JvmStatic
+		val redis: GenericContainer<*> = GenericContainer(DockerImageName.parse("redis:7-alpine")).withExposedPorts(6379)
+
 		@JvmStatic
 		@DynamicPropertySource
 		fun overrideProperties(registry: DynamicPropertyRegistry) {
@@ -49,6 +55,8 @@ class PostControllerIT {
 			registry.add("spring.datasource.username", mysql::getUsername)
 			registry.add("spring.datasource.password", mysql::getPassword)
 			registry.add("spring.data.mongodb.uri", mongo::getReplicaSetUrl)
+			registry.add("spring.data.redis.host", redis::getHost)
+			registry.add("spring.data.redis.port") { redis.getMappedPort(6379) }
 		}
 	}
 
@@ -110,5 +118,36 @@ class PostControllerIT {
 	fun `SC-010 존재하지 않는 게시글을 상세 조회하면 404를 반환한다`() {
 		mockMvc.perform(get("/api/posts/nonexistent-post-id"))
 			.andExpect(status().isNotFound)
+	}
+
+	@Test
+	fun `003-SC-003 게시글 상세 조회 응답에 현재 좋아요 수가 포함된다`() {
+		val savedPost = postRepository.save(Post.register("제목", "본문", UserId(1L)))
+		mockMvc.perform(post("/api/posts/${savedPost.id}/likes").header("X-User-Id", "2"))
+			.andExpect(status().isOk)
+
+		mockMvc.perform(get("/api/posts/${savedPost.id}"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.data.likeCount").value(1))
+	}
+
+	@Test
+	fun `003-SC-004 동일 게시글을 3회 조회하면 조회수가 3 증가한다`() {
+		val savedPost = postRepository.save(Post.register("제목", "본문", UserId(1L)))
+
+		mockMvc.perform(get("/api/posts/${savedPost.id}")).andExpect(status().isOk)
+		mockMvc.perform(get("/api/posts/${savedPost.id}")).andExpect(status().isOk)
+		mockMvc.perform(get("/api/posts/${savedPost.id}"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.data.viewCount").value(3))
+	}
+
+	@Test
+	fun `003-SC-005 게시글 상세 조회 응답에 현재 조회수가 포함된다`() {
+		val savedPost = postRepository.save(Post.register("제목", "본문", UserId(1L)))
+
+		mockMvc.perform(get("/api/posts/${savedPost.id}"))
+			.andExpect(status().isOk)
+			.andExpect(jsonPath("$.data.viewCount").value(1))
 	}
 }
