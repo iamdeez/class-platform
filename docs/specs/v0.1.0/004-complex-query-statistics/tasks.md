@@ -53,11 +53,11 @@
   - 상세: `price` 컬럼 매핑 추가, 도메인 ↔ JPA 엔티티 변환에 반영
   - 완료 기준: Testcontainers 통합 테스트로 `price` 저장·조회 왕복 확인 — 확인 완료 (`price가 저장 후 조회 시 동일하게 왕복된다` 케이스 추가, `BigDecimal.compareTo()` 기반 스케일 무관 비교)
 
-- [ ] **T006** — CompleteEnrollmentUseCase 구현 (T001, T005 완료 후)
+- [x] **T006** — CompleteEnrollmentUseCase 구현 (T001, T005 완료 후)
   - 구현 파일: `enrollment/application/CompleteEnrollmentUseCase.kt`(신규)
   - 관련 요구사항: `FR-004`, `FR-005`, `FR-006`
   - 상세: `enrollmentRepository.findById()`(404) → `courseRepository.findById(enrollment.courseId)`(404) → `course.instructorId == requesterId` 검증(403) → `enrollment.complete()`(전이 위반 시 409) → `save()`
-  - 완료 기준: 단위 테스트(MockK)로 정상 완료·404·403·409(이미 취소/이미 완료) 케이스 모두 통과
+  - 완료 기준: 단위 테스트(MockK)로 정상 완료·404·403·409(이미 취소/이미 완료) 케이스 모두 통과 — 확인 완료 (5개 케이스 모두 PASS, `InvalidEnrollmentStatusException`은 `InvalidStateException` 상속으로 `GlobalExceptionHandler`에서 자동으로 409 매핑됨을 확인)
 
 - [ ] **T007** — EnrollmentController에 완료 처리 엔드포인트 추가 (T006 완료 후)
   - 구현 파일: `enrollment/presentation/EnrollmentController.kt`(수정), `enrollment/presentation/dto/EnrollmentDtos.kt`(수정)
