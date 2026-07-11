@@ -101,10 +101,11 @@
   - 완료 기준: 각 유스케이스 단위 테스트(MockK) 통과 — 3개 파일 7건 통과
   - **구현 노트**: `CreateCommentUseCase`도 CHANGES.md 전제 조건에서 확인한 대로 `content`를 `HtmlSanitizer`로 sanitize한다(001·T007과 동일 관례). `ListCommentsUseCase`는 게시글 존재 여부를 확인하지 않는다 — plan.md 인터페이스 계약 표에 이 엔드포인트의 404 분기가 없고, 존재하지 않는 postId는 자연스럽게 빈 목록으로 응답되므로 별도 예외 처리가 불필요하다고 판단했다.
 
-- [ ] **T013** — CommentController 및 DTO 구현 (T012 완료 후)
+- [x] **T013** — CommentController 및 DTO 구현 (T012 완료 후)
   - 구현 파일: `comment/presentation/CommentController.kt`, `comment/presentation/dto/*.kt`
   - 관련 요구사항: `FR-006`, `FR-007`, `FR-008`
-  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인
+  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인 — `CommentControllerTest` 6건 통과
+  - **구현 노트**: plan.md 계약대로 댓글 엔드포인트가 `/api/posts/{postId}/comments`(작성·목록)와 `/api/comments/{commentId}`(삭제) 두 경로 프리픽스에 걸쳐 있어, `PostController`처럼 클래스 레벨 `@RequestMapping`을 두지 않고 001의 `EnrollmentController`(마찬가지로 `/api/courses/.../enrollments`, `/api/enrollments/...` 두 프리픽스를 다룸) 관례를 따라 메서드별로 전체 경로를 명시했다.
 
 ### Phase 4. 테스트 (SC-XXX 검증)
 
