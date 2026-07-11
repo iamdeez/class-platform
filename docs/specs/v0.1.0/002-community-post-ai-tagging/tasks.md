@@ -12,7 +12,7 @@
 
 - [x] spec.md의 모든 `[NEEDS CLARIFICATION]` 항목이 해소되었는가? — 미결 사항 없음.
 - [x] plan.md의 Constitution Gates가 모두 통과(또는 예외 기재)되었는가? — 5개 조항 모두 통과.
-- [ ] CHANGES.md에서 이전 작업의 "후속 작업 시 주의사항"을 확인했는가? — 001 spec이 아직 구현되지 않아 CHANGES.md 없음. **001 구현 완료 후 002 착수 시 재확인 필요**.
+- [x] CHANGES.md에서 이전 작업의 "후속 작업 시 주의사항"을 확인했는가? — 001 구현 완료. FR-008 소유자 권한 미구현, X-User-Id 기반 임시 인증, "상태 기반 거부는 409" 관례, description HTML sanitize(`HtmlSanitizer`) 재사용 항목을 확인했다. 002의 Post/Comment도 사용자 입력 HTML을 저장하므로 동일하게 `HtmlSanitizer`를 재사용할 예정이다.
 
 ## 태스크 목록
 
@@ -21,34 +21,37 @@
 
 ### Phase 1. 기반 작업
 
-- [ ] **T001** — MongoDB 로컬 기동 구성 추가
+- [x] **T001** — MongoDB 로컬 기동 구성 추가
   - 구현 파일: `docker-compose.yml`(수정), `src/main/resources/application.yml`(수정)
   - 관련 요구사항: 없음
   - 상세: 001의 MySQL 컨테이너와 병행하여 MongoDB 8 컨테이너 추가
   - 완료 기준: `docker compose up -d` 후 애플리케이션이 MongoDB 연결에 성공한다
 
-- [ ] **T002** `[P]` — Gradle 의존성 추가
+- [x] **T002** `[P]` — Gradle 의존성 추가
   - 구현 파일: `build.gradle.kts`
-  - 상세: `spring-boot-starter-data-mongodb`, `com.anthropic:anthropic-java` 추가
-  - 완료 기준: `./gradlew build` 성공
+  - 상세: `spring-boot-starter-data-mongodb`, `com.anthropic:anthropic-java:2.34.0` 추가. T005 통합 테스트에 필요한 `org.testcontainers:mongodb:1.20.1`(testImplementation)도 함께 추가
+  - 완료 기준: `./gradlew build` 성공 — 확인 완료. 추가로 앱 기동 시 MongoDB 연결 성공(`state=CONNECTED`) 로그로 T001의 완료 기준까지 함께 검증함
 
-- [ ] **T003** — 공통 AI 연동 설정 (T002 완료 후)
+- [x] **T003** — 공통 AI 연동 설정 (T002 완료 후)
   - 구현 파일: `common/AiEnrichmentConfig.kt`
-  - 상세: `@EnableAsync`, Claude 클라이언트 빈(`AnthropicOkHttpClient.fromEnv()`), 모델 ID를 `application.yml`에서 주입받는 설정 프로퍼티(`@ConfigurationProperties`)
-  - 완료 기준: 컴파일 성공, `ANTHROPIC_API_KEY` 미설정 시에도 애플리케이션 기동에는 영향 없음(호출 시점에만 필요)
+  - 상세: `@EnableAsync`, Claude 클라이언트 빈(`AnthropicOkHttpClient.fromEnv()`), 모델 ID를 `application.yml`에서 주입받는 설정 프로퍼티(`@ConfigurationProperties`, prefix `ai-enrichment.model`, 기본값 `claude-haiku-4-5`)
+  - 완료 기준: 컴파일 성공 확인. `ANTHROPIC_API_KEY`/`ANTHROPIC_AUTH_TOKEN`/`ANTHROPIC_PROFILE` 전부 unset한 셸에서 `./gradlew bootRun` 정상 기동 확인 (`AnthropicOkHttpClient.fromEnv()`는 빈 생성 시점에 자격증명을 검증하지 않고 실제 API 호출 시점에만 필요)
 
 ### Phase 2. 핵심 구현 — Post
 
-- [ ] **T004** — Post 도메인 모델 구현 (T001 완료 후)
-  - 구현 파일: `post/domain/Post.kt`, `post/domain/PostAiStatus.kt`, `post/domain/exception/*.kt`
+- [x] **T004** — Post 도메인 모델 구현 (T001 완료 후)
+  - 구현 파일: `post/domain/Post.kt`, `post/domain/PostAiStatus.kt`, `post/domain/exception/{PostNotFoundException, PostAccessDeniedException}.kt`
   - 관련 요구사항: `FR-001`, `FR-009`, `FR-010`, `FR-011`
-  - 상세: `markEnrichmentCompleted()`/`markEnrichmentFailed()` 메서드로 AI 상태 전이 캡슐화
-  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다
+  - 상세: `markEnrichmentCompleted()`/`markEnrichmentFailed()` 메서드로 AI 상태 전이 캡슐화. `updateContent()`도 함께 추가(FR-004, T007 UpdatePostUseCase에서 사용 예정) — title/body 불변식을 도메인 한 곳에서만 검증하기 위함
+  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다 — 확인 완료 (`post/domain/` import가 `com.classplatform.common`과 JDK 표준 라이브러리뿐임을 grep으로 검증)
 
-- [ ] **T005** — PostRepository + MongoDB 구현체 (T004 완료 후)
+- [x] **T005** — PostRepository + MongoDB 구현체 (T004 완료 후)
   - 구현 파일: `post/domain/PostRepository.kt`, `post/infrastructure/PostMongoDocument.kt`, `post/infrastructure/PostMongoRepository.kt`, `post/infrastructure/PostRepositoryImpl.kt`
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`
-  - 완료 기준: Testcontainers 통합 테스트로 저장·조회 왕복 확인
+  - 완료 기준: Testcontainers 통합 테스트(`PostRepositoryImplIT`)로 저장·조회 왕복 + 최신순 정렬 확인 — 통과
+  - **구현 중 발견한 이슈 1**: Mongo `save()`는 문서 전체를 덮어쓰므로(JPA의 컬럼 단위 UPDATE와 다름), 수정 시 새 transient document를 만들면 `createdAt`이 null로 덮어써진다. `PostRepositoryImpl.save()`에서 id가 있으면 기존 문서의 `createdAt`을 먼저 조회해 보존하도록 처리(001의 JPA merge 이슈와 같은 계열의 버그).
+  - **구현 중 발견한 이슈 2**: `@EnableMongoAuditing`을 `ClassPlatformApplication`(메인 `@SpringBootApplication` 클래스)에 직접 붙였더니, `@WebMvcTest` 등 Mongo와 무관한 슬라이스 테스트에서도 이 애노테이션이 그대로 적용되어 `mongoMappingContext` 빈 부재로 14개 테스트가 컨텍스트 로딩 실패했다. `common/config/MongoAuditingConfig.kt`(별도 `@Configuration`)로 분리하고, `@DataMongoTest` 슬라이스 테스트에서는 `@Import`로 명시적으로 가져오도록 수정해 해결.
+  - **테스트 격리 이슈**: `@DataMongoTest`는 `@DataJpaTest`와 달리 기본적으로 트랜잭션 롤백이 되지 않아, 테스트 메서드 간 데이터가 누적된다. `@BeforeEach`에서 `mongoRepository.deleteAll()`로 정리.
 
 - [ ] **T006** — AiTaggingPort + ClaudeAiTaggingClient 구현 (T003 완료 후)
   - 구현 파일: `post/domain/AiTaggingPort.kt`, `post/infrastructure/ClaudeAiTaggingClient.kt`
