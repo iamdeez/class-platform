@@ -53,8 +53,8 @@ class CourseStatisticsRepositoryImplIT {
 	private fun createCourse(title: String): Course =
 		courseRepository.save(Course.register(title, null, coursePrice, instructorId))
 
-	private fun enroll(courseId: Long, userId: Long): Enrollment =
-		enrollmentRepository.save(Enrollment.create(courseId, UserId(userId), coursePrice))
+	private fun enroll(courseId: Long, userId: Long, price: BigDecimal = coursePrice): Enrollment =
+		enrollmentRepository.save(Enrollment.create(courseId, UserId(userId), price))
 
 	@Test
 	fun `ACTIVE COMPLETED CANCELLED가 혼합된 강의의 통계가 정확히 집계된다`() {
@@ -105,5 +105,32 @@ class CourseStatisticsRepositoryImplIT {
 	@Test
 	fun `존재하지 않는 강의를 조회하면 null을 반환한다`() {
 		assertNull(courseStatisticsRepository.findByCourseId(999_999L))
+	}
+
+	@Test
+	fun `SC-007 강의 가격이 변경된 후에도 매출은 신청 시점 가격 기준으로 유지된다`() {
+		val course = createCourse("가격 변경 강의")
+		val courseId = requireNotNull(course.id)
+		enroll(courseId, 1L, price = BigDecimal("10000.00"))
+		enroll(courseId, 2L, price = BigDecimal("15000.00"))
+
+		val statistics = requireNotNull(courseStatisticsRepository.findByCourseId(courseId))
+
+		// course.price(현재값)와 무관하게 각 Enrollment의 price 스냅샷 합(10000+15000)이 매출이다.
+		assertEquals(0, BigDecimal("25000.00").compareTo(statistics.revenue))
+	}
+
+	@Test
+	fun `SC-008 취소된 수강은 매출 집계에서 제외된다`() {
+		val course = createCourse("취소 포함 강의")
+		val courseId = requireNotNull(course.id)
+		enroll(courseId, 1L)
+		val cancelled = enroll(courseId, 2L)
+		cancelled.cancel()
+		enrollmentRepository.save(cancelled)
+
+		val statistics = requireNotNull(courseStatisticsRepository.findByCourseId(courseId))
+
+		assertEquals(0, coursePrice.compareTo(statistics.revenue))
 	}
 }
