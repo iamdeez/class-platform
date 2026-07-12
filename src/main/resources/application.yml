@@ -1,8 +1,11 @@
+server:
+  port: ${PORT:8080}
+
 spring:
   application:
     name: class-platform
   datasource:
-    url: jdbc:mysql://localhost:3306/${MYSQL_DATABASE:class_platform}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul
+    url: ${MYSQL_JDBC_URL:jdbc:mysql://localhost:3306/${MYSQL_DATABASE:class_platform}?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul}
     username: ${MYSQL_USER:class_platform}
     password: ${MYSQL_PASSWORD:class_platform}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -15,10 +18,13 @@ spring:
     locations: classpath:db/migration
   data:
     mongodb:
-      uri: mongodb://${MONGO_ROOT_USERNAME:root}:${MONGO_ROOT_PASSWORD:root}@localhost:27017/${MONGO_DATABASE:class_platform}?authSource=admin
+      uri: ${MONGODB_URI:mongodb://${MONGO_ROOT_USERNAME:root}:${MONGO_ROOT_PASSWORD:root}@localhost:27017/${MONGO_DATABASE:class_platform}?authSource=admin}
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
 
 ai-enrichment:
   model: ${AI_ENRICHMENT_MODEL:claude-haiku-4-5}
@@ -33,3 +39,12 @@ mybatis:
   mapper-locations: classpath:mybatis/mapper/*.xml
   configuration:
     map-underscore-to-camel-case: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never

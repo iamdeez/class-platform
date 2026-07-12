@@ -26,11 +26,11 @@
   - 상세: `/actuator/health` 엔드포인트 노출을 위한 의존성 추가
   - 완료 기준: `./gradlew build` 성공, 로컬 기동 후 `curl localhost:8080/actuator/health`가 200 반환 — 확인 완료 (`{"status":"UP"}`, HTTP 200. 기본 설정만으로 `/actuator` 하위 1개 엔드포인트(health)만 노출됨을 로그로 확인 — Spring Boot Actuator 기본값이 이미 안전한 최소 노출)
 
-- [ ] **T002** `[P]` — `application.yml` 배포 대응 설정 변경
+- [x] **T002** `[P]` — `application.yml` 배포 대응 설정 변경
   - 구현 파일: `src/main/resources/application.yml`
   - 관련 요구사항: `FR-005`, `FR-006`
   - 상세: `server.port`(`PORT` 환경변수 우선), `spring.datasource.url`/`spring.data.mongodb.uri` 전체 오버라이드 가능화(기존 로컬 기본값 유지), `spring.data.redis.password`/`ssl.enabled` 추가, `management.endpoints.web.exposure.include: health` + `show-details: never`
-  - 완료 기준: 환경변수 미설정 시 기존 로컬 개발 동작(001~004의 모든 테스트)이 그대로 통과한다
+  - 완료 기준: 환경변수 미설정 시 기존 로컬 개발 동작(001~004의 모든 테스트)이 그대로 통과한다 — 확인 완료. `./gradlew bootRun`으로 중첩 플레이스홀더(`${MYSQL_JDBC_URL:jdbc:mysql://...${MYSQL_DATABASE:...}...}`) 정상 해석 확인(헬스체크 200), 전체 회귀 테스트(`BUILD SUCCESSFUL`, 실패 0건) 통과
 
 - [ ] **T003** `[P]` — `Dockerfile` 작성
   - 구현 파일: `Dockerfile`(신규)
