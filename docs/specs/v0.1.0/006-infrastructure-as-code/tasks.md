@@ -63,11 +63,12 @@
   - 완료 기준: `terraform validate` 통과 — 확인 완료
   - **구현 노트**: `terraform providers schema -json`으로 로컬에서 정확한 스키마를 확인해 필수 속성이 `database_name`/`region` 2개뿐임을 파악했다(추측 대신 실측). T002에서 조회한 실제 값(`database_name: Flowrit`, `region: global`, `primary_region: ap-northeast-1`)을 그대로 반영
 
-- [ ] **T007** `[P]` — Aiven 리소스 코드 작성
+- [x] **T007** `[P]` — Aiven 리소스 코드 작성
   - 구현 파일: `infra/terraform/aiven.tf`(신규)
   - 관련 요구사항: `FR-003`
   - 상세: `aiven_mysql` 빈 블록으로 시작
-  - 완료 기준: `terraform validate` 통과
+  - 완료 기준: `terraform validate` 통과 — 확인 완료
+  - **구현 노트**: `terraform providers schema -json`으로 필수 속성이 `project`/`service_name`/`plan` 3개임을 확인. T003에서 조회한 실제 값(`project: deezcreator-b418`, `service_name: class-platform-mysql`, `plan: free-1-1gb`, `cloud_name: do-blr`)을 그대로 반영
 
 ### Phase 3. Import 및 검증 (T004~T007, T001~T003 완료 후)
 
