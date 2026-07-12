@@ -78,10 +78,11 @@
   - 완료 기준: `terraform plan`이 해당 3개 리소스에 대해 "No changes"를 반환한다 — 확인 완료
   - **구현 중 발견한 이슈**: ① 리소스 설정에 선언된 provider가 하나라도 있으면(`aiven` 등) import 대상이 아니어도 해당 provider의 인증정보가 없으면 "token is required for Aiven client" 오류로 전체가 막힌다 — `AIVEN_TOKEN`도 함께 export해서 해결. ② `mongodbatlas_project_ip_access_list`의 `comment`를 코드에서 임의로 채웠더니 실제 값(빈 문자열)과 달라 **재생성(destroy+create)**이 필요하다고 나왔다(`comment` 변경이 이 리소스의 force-replacement 필드). NFR-002(무중단) 위반 위험이라 즉시 실제 값(빈 문자열)에 맞춰 코드를 수정해 재생성을 피했다 — plan.md의 "속성값은 실제 콘솔 값과 일치하도록 작성" 원칙이 실제로 힘을 발휘한 사례
 
-- [ ] **T009** `[P]` — Upstash 리소스 import
+- [x] **T009** `[P]` — Upstash 리소스 import
   - 관련 요구사항: `FR-004`, `NFR-002`
   - 상세: `terraform import upstash_redis_database.redis {db-id}` 후 `terraform plan`으로 diff 확인·조정
-  - 완료 기준: `terraform plan`이 "No changes"를 반환한다
+  - 완료 기준: `terraform plan`이 "No changes"를 반환한다 — 확인 완료
+  - **구현 중 발견한 이슈**: T008과 같은 패턴 — `tls` 속성을 코드에 명시하지 않아 기본값(`false`)이 적용됐는데 실제 값은 `true`(Upstash 기본 TLS 활성)라 재생성이 필요하다고 나왔다. 실제 값에 맞춰 즉시 수정해 무중단 보장(NFR-002)
 
 - [ ] **T010** `[P]` — Aiven 리소스 import
   - 관련 요구사항: `FR-004`, `NFR-002`
