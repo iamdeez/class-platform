@@ -86,11 +86,12 @@
   - 완료 기준: Testcontainers 통합 테스트로 다양한 상태 조합(ACTIVE/COMPLETED/CANCELLED 혼합)에서 집계 값이 정확한지 확인. 수강생이 없는 강의의 0/0 방어 케이스 포함 — 확인 완료 (혼합 상태 집계, 0/0 방어, 강사별 필터링, 존재하지 않는 강의 조회 4개 케이스 모두 PASS)
   - **구현 노트**: XML 매퍼는 `src/main/resources/mybatis/mapper/`에 위치시키고 `application.yml`에 `mybatis.mapper-locations`(명시적 classpath 경로)와 `mybatis.configuration.map-underscore-to-camel-case: true`(snake_case 컬럼 → camelCase 필드 자동 매핑)를 추가했다. `@Mapper` 인터페이스는 `@SpringBootApplication`(`com.classplatform`) 하위 패키지라 별도 `@MapperScan` 없이 자동 스캔된다. 통합 테스트는 `@DataJpaTest`(JPA 슬라이스, MyBatis 자동 구성 미포함)가 아닌 001의 `CourseControllerIT` 패턴을 따라 `@SpringBootTest` 전체 컨텍스트로 작성했다 — MongoDB/Redis는 연결 없이도 빈 등록만으로 컨텍스트가 정상 기동됨을 확인.
 
-- [ ] **T011** — GetInstructorStatisticsUseCase, GetCourseStatisticsUseCase (T010 완료 후)
+- [x] **T011** — GetInstructorStatisticsUseCase, GetCourseStatisticsUseCase (T010 완료 후)
   - 구현 파일: `statistics/application/GetInstructorStatisticsUseCase.kt`(신규), `statistics/application/GetCourseStatisticsUseCase.kt`(신규)
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`
   - 상세: `GetCourseStatisticsUseCase`는 `courseRepository.findById()`로 소유권을 먼저 검증(403/404) 후 통계 조회
-  - 완료 기준: 단위 테스트(MockK)로 정상 조회·403·404 케이스 통과
+  - 완료 기준: 단위 테스트(MockK)로 정상 조회·403·404 케이스 통과 — 확인 완료 (4개 케이스 모두 PASS)
+  - **구현 노트**: 403 판정에 필요한 `CourseAccessDeniedException`(`ForbiddenActionException` 상속)이 기존에 없어 `course/domain/exception`에 신규 추가했다. `GetCourseStatisticsUseCase`는 소유권 검증 후 `findByCourseId()`가 이론상 null을 반환할 수 없지만(직전에 `courseRepository.findById()`로 존재를 확인했으므로), 방어적으로 `CourseNotFoundException`을 재사용해 처리했다.
 
 - [ ] **T012** — StatisticsController 및 DTO 구현 (T011 완료 후)
   - 구현 파일: `statistics/presentation/StatisticsController.kt`(신규), `statistics/presentation/dto/StatisticsDtos.kt`(신규)
