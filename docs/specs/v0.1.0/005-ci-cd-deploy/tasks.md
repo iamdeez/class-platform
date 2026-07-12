@@ -92,11 +92,14 @@
 
 ### Phase 3. 검증 (SC-XXX 확인)
 
-- [ ] **T013** `[P]` — SC-001 검증
+- [x] **T013** `[P]` — SC-001 검증
   - 시나리오: 임의 브랜치에 사소한 변경을 push한 뒤 GitHub Actions 탭에서 `test` job이 자동 실행되는지 확인
+  - 확인 완료: `verify/ci-trigger` 임시 브랜치에 push하자마자 `gh run list`에서 `test` job이 `in_progress`로 즉시 트리거됨을 확인. 검증 후 브랜치는 로컬/원격 모두 삭제
 
-- [ ] **T014** (T012 완료 후) — SC-002 검증
+- [x] **T014** (T012 완료 후) — SC-002 검증
   - 시나리오: 의도적으로 실패하는 테스트를 담은 커밋으로 PR을 생성해 병합 버튼이 비활성화되는지 확인. 확인 후 해당 PR/브랜치는 정리(삭제)한다
+  - 확인 완료: PR #1(`verify/failing-test`) 생성 → `test` job 실패 → `deploy` job "skipping"(needs 미충족, FR-004 메커니즘도 함께 확인) → `gh pr view`에서 `mergeStateStatus: BLOCKED` 확인. 검증 후 PR close + 브랜치 삭제
+  - **구현 중 발견한 이슈**: T011 이전(Secret 미등록 상태)에 push된 main 커밋 하나가 `deploy` job에서 `curl -X POST ""`(빈 URL)로 실패한 이력이 있었으나, `test` job 자체는 통과했고 원인이 Secret 등록 시점 이전이라는 게 명확해 문제 없음으로 판단(현재는 T011 완료로 해소)
 
 - [ ] **T015** (T005, T010, T011 완료 후) — SC-003, SC-005 검증
   - 시나리오: main에 사소한 변경(예: README)을 병합한 뒤 15분 이내에 배포된 URL의 `/actuator/health`가 200을 반환하는지, 변경 사항이 반영되었는지 확인
@@ -104,8 +107,9 @@
 - [ ] **T016** (T012, T015 완료 후) — SC-004 검증
   - 시나리오: 실패하는 테스트를 담은 커밋을 관리자 권한으로 강제 병합해 `deploy` job이 스킵되거나 실패로 종료되는지, 배포된 서비스가 이전 버전으로 유지되는지 확인. 확인 후 즉시 되돌린다(정상 커밋으로 재병합)
 
-- [ ] **T017** `[P]` — SC-006 검증
+- [x] **T017** `[P]` — SC-006 검증
   - 시나리오: `git grep`으로 저장소 전체에서 평문 비밀번호·API 키 패턴을 검색해 매치가 없음을 확인
+  - 확인 완료: 추적 파일 전체 검색 결과 유일한 매치는 `.env.example`의 `MYSQL_PASSWORD=class_platform`(001부터 있던 로컬 개발용 더미 값, 실제 자격증명 아님). Aiven/MongoDB/Upstash/Anthropic 실제 키 패턴은 0건. `git log --all -p` 히스토리 검색도 T012에서 별도로 완료(0건)
 
 ## 구현 완료 기준
 
