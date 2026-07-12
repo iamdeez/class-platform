@@ -74,18 +74,21 @@
   - 상세: 무료 티어 서비스 생성 후 host/port/DB명/계정 확보. Flyway 마이그레이션(V1~V3)이 최초 기동 시 자동 적용됨을 확인
   - 완료 기준: 사용자가 직접 수행하고 완료를 확인함(접속 정보는 T010에서 Render 환경변수로 직접 입력 예정, AI에게 공유하지 않음). Flyway 자동 적용은 T010 최초 배포 시 검증
 
-- [ ] **T010** `[수동]` (T003, T007, T008, T009 완료 후) — Render Web Service 생성 및 환경변수 등록
+- [x] **T010** `[수동]` (T003, T007, T008, T009 완료 후) — Render Web Service 생성 및 환경변수 등록
   - 관련 요구사항: `FR-003`, `FR-005`, `FR-006`
   - 상세: GitHub 저장소 연동, Environment를 Docker로 설정, `Dockerfile` 경로 지정, T007~T009에서 확보한 접속 정보를 Environment Variables로 등록(`ANTHROPIC_API_KEY` 포함), **Auto-Deploy는 반드시 Off**, Health Check Path를 `/actuator/health`로 설정
-  - 완료 기준: Render 대시보드에서 최초 수동 배포가 성공하고 서비스 URL이 발급된다
+  - 완료 기준: Render 대시보드에서 최초 수동 배포가 성공하고 서비스 URL이 발급된다 — 확인 완료 (`https://class-platform-quan.onrender.com`, `/actuator/health` 200 및 `/api/courses` 200 응답 확인. 최초 빌드 시 `origin/main`에 Dockerfile이 push되지 않아 "Dockerfile을 찾을 수 없음" 오류가 발생했었고, 로컬에만 쌓여있던 커밋 36개를 push해 해결. 배포 직후 Render 엣지 라우팅이 간헐적으로 `no-server` 404를 반환하는 현상 관찰 — 재요청 시 정상 응답, 무료 티어의 일시적 라우팅 불안정으로 판단)
 
-- [ ] **T011** `[수동]` (T010 완료 후) — GitHub Actions Secret 등록
+- [x] **T011** `[수동]` (T010 완료 후) — GitHub Actions Secret 등록
   - 관련 요구사항: `FR-006`
   - 상세: 저장소 Settings → Secrets and variables → Actions에 `RENDER_DEPLOY_HOOK_URL`(T010에서 발급된 Render Deploy Hook URL) 등록
+  - 완료 기준: 등록 완료 — 확인 완료. 사용자가 Deploy Hook URL을 전달했고, `gh` CLI가 저장소 소유자 계정으로 인증되어 있어 AI가 `gh secret set`으로 직접 등록(값을 파일에 기록하지 않고 GitHub API로 직접 전송). `gh secret list`로 등록 확인
 
-- [ ] **T012** `[수동]` — main 브랜치 보호 규칙 설정
+- [x] **T012** `[수동]` — main 브랜치 보호 규칙 설정
   - 관련 요구사항: `FR-002`
   - 상세: 저장소 Settings → Branches에서 main에 대해 "Require status checks to pass before merging" 활성화, `test` job을 필수 체크로 지정
+  - 완료 기준: 등록 완료 — 확인 완료. `gh api PUT .../branches/main/protection`으로 `required_status_checks: {strict: true, contexts: ["test"]}` 설정(응답에서 `checks: [{"context":"test","app_id":15368}]` 확인)
+  - **구현 중 발견한 이슈**: private 저장소는 GitHub Pro 없이 브랜치 보호 규칙을 사용할 수 없어(403 "Upgrade to GitHub Pro or make this repository public") 저장소를 **public으로 전환**했다(포트폴리오 목적에 부합하고 GitHub Actions 무료 분당 한도도 무제한이 되어 NFR-001에도 유리). 전환 전 `git log --all -p`로 전체 히스토리에 실제 시크릿(API 키·DB 비밀번호)이 커밋된 적 없음을 확인(매칭된 항목은 모두 `{placeholder}` 문서화 예시)
 
 ### Phase 3. 검증 (SC-XXX 확인)
 
