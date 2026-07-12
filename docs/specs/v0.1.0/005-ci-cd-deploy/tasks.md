@@ -32,11 +32,12 @@
   - 상세: `server.port`(`PORT` 환경변수 우선), `spring.datasource.url`/`spring.data.mongodb.uri` 전체 오버라이드 가능화(기존 로컬 기본값 유지), `spring.data.redis.password`/`ssl.enabled` 추가, `management.endpoints.web.exposure.include: health` + `show-details: never`
   - 완료 기준: 환경변수 미설정 시 기존 로컬 개발 동작(001~004의 모든 테스트)이 그대로 통과한다 — 확인 완료. `./gradlew bootRun`으로 중첩 플레이스홀더(`${MYSQL_JDBC_URL:jdbc:mysql://...${MYSQL_DATABASE:...}...}`) 정상 해석 확인(헬스체크 200), 전체 회귀 테스트(`BUILD SUCCESSFUL`, 실패 0건) 통과
 
-- [ ] **T003** `[P]` — `Dockerfile` 작성
+- [x] **T003** `[P]` — `Dockerfile` 작성
   - 구현 파일: `Dockerfile`(신규)
   - 관련 요구사항: `FR-003`, `FR-005`
   - 상세: 멀티스테이지 빌드(`eclipse-temurin:17-jdk-alpine`으로 `./gradlew bootJar -x test` → `eclipse-temurin:17-jre-alpine`으로 실행)
-  - 완료 기준: `docker build -t class-platform .` 성공, `docker run -p 8080:8080 class-platform`으로 로컬 기동 확인(연결 가능한 로컬 MySQL/MongoDB/Redis 필요 — `docker-compose up -d`와 병행)
+  - 완료 기준: `docker build -t class-platform .` 성공, `docker run -p 8080:8080 class-platform`으로 로컬 기동 확인(연결 가능한 로컬 MySQL/MongoDB/Redis 필요 — `docker-compose up -d`와 병행) — 확인 완료. `docker run`에 `host.docker.internal`로 로컬 MySQL/MongoDB/Redis 연결 오버라이드하여 헬스체크 200 확인
+  - **구현 중 발견한 이슈**: `eclipse-temurin:17-jre-alpine`은 amd64 아키텍처만 매니페스트에 존재해(arm64 없음), 로컬 Mac(arm64)에서 `docker build` 시 "no match for platform in manifest" 오류가 발생했다. Render 배포 대상이 어차피 x86_64이므로 두 스테이지 모두 `FROM --platform=linux/amd64`를 명시해 해결(로컬에서는 에뮬레이션으로 빌드/실행, 프로덕션과 동일 아키텍처 보장). buildkit이 "FromPlatformFlagConstDisallowed" 린트 경고를 내지만 빌드 실패는 아니며, 고정 아키텍처가 의도된 선택이라 허용했다
 
 - [ ] **T004** `[P]` — `.dockerignore` 작성
   - 구현 파일: `.dockerignore`(신규)
