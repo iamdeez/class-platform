@@ -9,3 +9,8 @@ variable "upstash_api_key" {
   type        = string
   sensitive   = true
 }
+
+variable "atlas_project_id" {
+  description = "MongoDB Atlas Project ID (Project 0)"
+  type        = string
+}

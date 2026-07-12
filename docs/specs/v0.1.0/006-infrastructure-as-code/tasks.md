@@ -48,11 +48,13 @@
   - 완료 기준: `terraform init`이 오류 없이 완료된다(SC-001) — 확인 완료 (`mongodbatlas v2.13.0`, `upstash v1.5.3`, `aiven v4.60.0` 설치, `.terraform.lock.hcl` 생성)
   - **구현 노트**: `.terraform.lock.hcl`은 provider 버전·체크섬 고정용이라 `.gitignore`에서 제외하지 않고 커밋 대상으로 유지한다(Terraform 공식 권장 관행). `variables.tf`를 T004에서 먼저 만든 이유는 `providers.tf`의 upstash provider 블록이 이미 `var.upstash_email`/`var.upstash_api_key`를 참조하기 때문(plan.md 설계상 T005 소관이었으나 순서상 앞당김)
 
-- [ ] **T005** `[P]` — Atlas 리소스 코드 작성
+- [x] **T005** `[P]` — Atlas 리소스 코드 작성
   - 구현 파일: `infra/terraform/atlas.tf`(신규), `infra/terraform/variables.tf`(신규 또는 확장)
   - 관련 요구사항: `FR-001`
   - 상세: `mongodbatlas_advanced_cluster`(M0), `mongodbatlas_database_user`(`lifecycle.ignore_changes = [password]` 포함), `mongodbatlas_project_ip_access_list`(`0.0.0.0/0`)
-  - 완료 기준: `terraform validate` 통과
+  - 완료 기준: `terraform validate` 통과 — 확인 완료
+  - **구현 노트**: 정확한 실제 값을 Atlas API(`GET /api/atlas/v2/groups`, `/clusters`, `/databaseUsers`, `/accessList`, Digest 인증)로 직접 조회해 코드에 반영했다 — Project ID `6a53d9ab7ea2f16c294f6e58`, 클러스터명 `Cluster0`(REPLICASET, TENANT/AWS/AP_NORTHEAST_2, M0), DB 사용자 `deezcreatordev_db_user`(auth db `admin`, role `atlasAdmin`), IP Access List에 `0.0.0.0/0` 외 "Auto Setup" 단계에서 자동 추가된 `58.224.57.204/32`도 있었으나 후자는 우리가 의도적으로 만든 리소스가 아니라 Terraform 관리 대상에서 제외(import/정의 안 함 — 즉 unmanaged 상태로 남아 plan에 영향 없음). `mongodbatlas_advanced_cluster`는 `replication_specs`/`region_configs`/`electable_specs`가 (구버전 block이 아닌) 중첩 객체 리스트 속성 문법임을 `terraform validate`로 확인
+  - **구현 중 발견한 이슈**: T001 완료 직후엔 Atlas API 키로 프로젝트 목록 조회 시 0건이 반환됐다(권한 전파 지연으로 추정) — 잠시 후 재조회하니 정상 조회됨
 
 - [ ] **T006** `[P]` — Upstash 리소스 코드 작성
   - 구현 파일: `infra/terraform/upstash.tf`(신규), `infra/terraform/variables.tf`(확장), `infra/terraform/terraform.tfvars.example`(신규)
