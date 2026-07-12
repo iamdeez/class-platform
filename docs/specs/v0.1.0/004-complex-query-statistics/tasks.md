@@ -73,11 +73,11 @@
   - 상세: 강사 소유 강의 목록 조회(상태 무관, DRAFT 포함 — 대시보드는 강사 본인 것이므로 공개 여부와 무관하게 전부 보여줌)
   - 완료 기준: Testcontainers 통합 테스트로 강사별 강의 목록 조회 확인 — 확인 완료 (`CourseJpaRepository.findAllByInstructorId` derived query, DRAFT/PUBLISHED 혼합 + 타 강사 강의 배제 시나리오로 검증)
 
-- [ ] **T009** — CourseStatistics 값 객체 + CourseStatisticsRepository 포트 (T002 완료 후)
+- [x] **T009** — CourseStatistics 값 객체 + CourseStatisticsRepository 포트 (T002 완료 후)
   - 구현 파일: `statistics/domain/CourseStatistics.kt`(신규), `statistics/domain/CourseStatisticsRepository.kt`(신규)
   - 관련 요구사항: `FR-001`, `FR-002`
   - 상세: `CourseStatistics(courseId, title, studentCount, revenue, completionRate, cancellationRate)`. 포트는 `findAllByInstructorId(instructorId): List<CourseStatistics>`, `findByCourseId(courseId): CourseStatistics?`
-  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다
+  - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다 — 확인 완료 (`java.math.BigDecimal`, `common.UserId` 외 프레임워크 import 없음)
 
 - [ ] **T010** — CourseStatisticsMapper(MyBatis) + CourseStatisticsRepositoryImpl (T002, T003, T009 완료 후)
   - 구현 파일: `statistics/infrastructure/CourseStatisticsMapper.kt`(신규), `statistics/infrastructure/resources/CourseStatisticsMapper.xml`(신규), `statistics/infrastructure/CourseStatisticsRepositoryImpl.kt`(신규)
