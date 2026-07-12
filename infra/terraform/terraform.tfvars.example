@@ -1,0 +1,6 @@
+# 이 파일을 복사해 terraform.tfvars로 저장하고 실제 값을 채운다.
+# terraform.tfvars는 .gitignore에 등록되어 있어 커밋되지 않는다.
+
+upstash_email    = "{upstash-계정-이메일}"
+upstash_api_key  = "{upstash-management-api-key}"
+atlas_project_id = "{mongodb-atlas-project-id}"

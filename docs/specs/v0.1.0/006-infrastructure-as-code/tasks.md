@@ -56,11 +56,12 @@
   - **구현 노트**: 정확한 실제 값을 Atlas API(`GET /api/atlas/v2/groups`, `/clusters`, `/databaseUsers`, `/accessList`, Digest 인증)로 직접 조회해 코드에 반영했다 — Project ID `6a53d9ab7ea2f16c294f6e58`, 클러스터명 `Cluster0`(REPLICASET, TENANT/AWS/AP_NORTHEAST_2, M0), DB 사용자 `deezcreatordev_db_user`(auth db `admin`, role `atlasAdmin`), IP Access List에 `0.0.0.0/0` 외 "Auto Setup" 단계에서 자동 추가된 `58.224.57.204/32`도 있었으나 후자는 우리가 의도적으로 만든 리소스가 아니라 Terraform 관리 대상에서 제외(import/정의 안 함 — 즉 unmanaged 상태로 남아 plan에 영향 없음). `mongodbatlas_advanced_cluster`는 `replication_specs`/`region_configs`/`electable_specs`가 (구버전 block이 아닌) 중첩 객체 리스트 속성 문법임을 `terraform validate`로 확인
   - **구현 중 발견한 이슈**: T001 완료 직후엔 Atlas API 키로 프로젝트 목록 조회 시 0건이 반환됐다(권한 전파 지연으로 추정) — 잠시 후 재조회하니 정상 조회됨
 
-- [ ] **T006** `[P]` — Upstash 리소스 코드 작성
+- [x] **T006** `[P]` — Upstash 리소스 코드 작성
   - 구현 파일: `infra/terraform/upstash.tf`(신규), `infra/terraform/variables.tf`(확장), `infra/terraform/terraform.tfvars.example`(신규)
   - 관련 요구사항: `FR-002`
   - 상세: `upstash_redis_database` 빈 블록으로 시작. provider 인증 방식은 구현 시 공식 문서(`registry.terraform.io/providers/upstash/upstash/latest/docs`)로 재확인 후 확정(research.md 참조)
-  - 완료 기준: `terraform validate` 통과
+  - 완료 기준: `terraform validate` 통과 — 확인 완료
+  - **구현 노트**: `terraform providers schema -json`으로 로컬에서 정확한 스키마를 확인해 필수 속성이 `database_name`/`region` 2개뿐임을 파악했다(추측 대신 실측). T002에서 조회한 실제 값(`database_name: Flowrit`, `region: global`, `primary_region: ap-northeast-1`)을 그대로 반영
 
 - [ ] **T007** `[P]` — Aiven 리소스 코드 작성
   - 구현 파일: `infra/terraform/aiven.tf`(신규)
