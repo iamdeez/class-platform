@@ -34,10 +34,10 @@
   - 완료 기준: API Key + 계정 이메일 + DB ID 확보 — 확인 완료 (사용자가 API Key 발급, AI가 Upstash Developer API(`GET /v2/redis/databases`)로 조회해 `database_id: 763bfc83-3314-45ce-8966-f09839b5c0ba` 확인. endpoint·password가 기존 005 접속 정보와 일치함을 확인해 올바른 DB임을 검증)
   - **구현 중 발견한 이슈**: Upstash Terraform provider는 환경변수를 자동으로 읽지 않는다(Upstash CLI와 달리). `email`/`api_key`를 `terraform.tfvars`로 명시 전달해야 한다(research.md 불확실성 해소 — plan.md "자격증명 처리" 절에 이미 이 경로를 대비해뒀음). 콘솔에서 DB ID가 표시되는 위치는 확인하지 못했고, API 직접 조회로 대체함
 
-- [ ] **T003** `[수동]` `[P]` — Aiven API Token 발급 + 서비스 식별자 확인
+- [x] **T003** `[수동]` `[P]` — Aiven API Token 발급 + 서비스 식별자 확인
   - 관련 요구사항: `FR-003`, `FR-004`
   - 상세: Aiven Console → 계정 메뉴 → Personal Tokens에서 발급. 프로젝트명, 서비스명 확인
-  - 완료 기준: API Token + 프로젝트명·서비스명 확보
+  - 완료 기준: API Token + 프로젝트명·서비스명 확보 — 확인 완료 (사용자가 Personal Token 발급, AI가 Aiven API(`GET /v1/project`, `GET /v1/project/{project}/service`)로 조회해 프로젝트명 `deezcreator-b418`, 서비스명 `class-platform-mysql` 확인. host가 기존 접속 정보와 일치함을 검증)
 
 ### Phase 2. Terraform 코드 작성 (T001~T003 완료 후)
 
