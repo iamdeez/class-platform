@@ -28,3 +28,8 @@ popularity-cache:
 
 post-detail-cache:
   ttl-seconds: ${POST_DETAIL_CACHE_TTL_SECONDS:300}
+
+mybatis:
+  mapper-locations: classpath:mybatis/mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true

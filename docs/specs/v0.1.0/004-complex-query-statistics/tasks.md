@@ -79,11 +79,12 @@
   - 상세: `CourseStatistics(courseId, title, studentCount, revenue, completionRate, cancellationRate)`. 포트는 `findAllByInstructorId(instructorId): List<CourseStatistics>`, `findByCourseId(courseId): CourseStatistics?`
   - 완료 기준: 프레임워크 의존 없이 순수 Kotlin으로 컴파일된다 — 확인 완료 (`java.math.BigDecimal`, `common.UserId` 외 프레임워크 import 없음)
 
-- [ ] **T010** — CourseStatisticsMapper(MyBatis) + CourseStatisticsRepositoryImpl (T002, T003, T009 완료 후)
+- [x] **T010** — CourseStatisticsMapper(MyBatis) + CourseStatisticsRepositoryImpl (T002, T003, T009 완료 후)
   - 구현 파일: `statistics/infrastructure/CourseStatisticsMapper.kt`(신규), `statistics/infrastructure/resources/CourseStatisticsMapper.xml`(신규), `statistics/infrastructure/CourseStatisticsRepositoryImpl.kt`(신규)
   - 관련 요구사항: `FR-001`, `FR-002`, `NFR-001`
   - 상세: plan.md의 GROUP BY 집계 쿼리(`CASE WHEN` 조건부 카운트/합계)를 MyBatis Mapper로 구현. `CourseStatisticsRepositoryImpl`이 원시 카운트를 받아 `completionRate`/`cancellationRate`를 계산(분모 0 방어)
-  - 완료 기준: Testcontainers 통합 테스트로 다양한 상태 조합(ACTIVE/COMPLETED/CANCELLED 혼합)에서 집계 값이 정확한지 확인. 수강생이 없는 강의의 0/0 방어 케이스 포함
+  - 완료 기준: Testcontainers 통합 테스트로 다양한 상태 조합(ACTIVE/COMPLETED/CANCELLED 혼합)에서 집계 값이 정확한지 확인. 수강생이 없는 강의의 0/0 방어 케이스 포함 — 확인 완료 (혼합 상태 집계, 0/0 방어, 강사별 필터링, 존재하지 않는 강의 조회 4개 케이스 모두 PASS)
+  - **구현 노트**: XML 매퍼는 `src/main/resources/mybatis/mapper/`에 위치시키고 `application.yml`에 `mybatis.mapper-locations`(명시적 classpath 경로)와 `mybatis.configuration.map-underscore-to-camel-case: true`(snake_case 컬럼 → camelCase 필드 자동 매핑)를 추가했다. `@Mapper` 인터페이스는 `@SpringBootApplication`(`com.classplatform`) 하위 패키지라 별도 `@MapperScan` 없이 자동 스캔된다. 통합 테스트는 `@DataJpaTest`(JPA 슬라이스, MyBatis 자동 구성 미포함)가 아닌 001의 `CourseControllerIT` 패턴을 따라 `@SpringBootTest` 전체 컨텍스트로 작성했다 — MongoDB/Redis는 연결 없이도 빈 등록만으로 컨텍스트가 정상 기동됨을 확인.
 
 - [ ] **T011** — GetInstructorStatisticsUseCase, GetCourseStatisticsUseCase (T010 완료 후)
   - 구현 파일: `statistics/application/GetInstructorStatisticsUseCase.kt`(신규), `statistics/application/GetCourseStatisticsUseCase.kt`(신규)

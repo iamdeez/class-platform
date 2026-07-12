@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.classplatform.statistics.infrastructure.CourseStatisticsMapper">
+
+    <sql id="statisticsColumns">
+        c.id AS course_id,
+        c.title AS title,
+        COUNT(CASE WHEN e.status IN ('ACTIVE', 'COMPLETED') THEN 1 END) AS student_count,
+        COALESCE(SUM(CASE WHEN e.status IN ('ACTIVE', 'COMPLETED') THEN e.price END), 0) AS revenue,
+        COUNT(CASE WHEN e.status = 'COMPLETED' THEN 1 END) AS completed_count,
+        COUNT(CASE WHEN e.status = 'CANCELLED' THEN 1 END) AS cancelled_count,
+        COUNT(e.id) AS total_count
+    </sql>
+
+    <select id="findAllByInstructorId" resultType="com.classplatform.statistics.infrastructure.CourseStatisticsRow">
+        SELECT
+        <include refid="statisticsColumns"/>
+        FROM course c
+        LEFT JOIN enrollment e ON e.course_id = c.id
+        WHERE c.instructor_id = #{instructorId}
+        GROUP BY c.id, c.title
+    </select>
+
+    <select id="findByCourseId" resultType="com.classplatform.statistics.infrastructure.CourseStatisticsRow">
+        SELECT
+        <include refid="statisticsColumns"/>
+        FROM course c
+        LEFT JOIN enrollment e ON e.course_id = c.id
+        WHERE c.id = #{courseId}
+        GROUP BY c.id, c.title
+    </select>
+
+</mapper>
