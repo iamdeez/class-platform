@@ -105,8 +105,9 @@
   - 시나리오: main에 사소한 변경(예: README)을 병합한 뒤 15분 이내에 배포된 URL의 `/actuator/health`가 200을 반환하는지, 변경 사항이 반영되었는지 확인
   - 확인 완료: T013/T014/T017 커밋(`a599a38`)을 main에 push한 뒤 CI/CD 워크플로우가 `test`→`deploy`(Render Deploy Hook 호출) 순서로 성공, 이후 `https://class-platform-quan.onrender.com/actuator/health`가 즉시 `200 {"status":"UP"}` 반환. push부터 확인까지 총 소요 약 8분(15분 이내 요건 충족)
 
-- [ ] **T016** (T012, T015 완료 후) — SC-004 검증
+- [x] **T016** (T012, T015 완료 후) — SC-004 검증
   - 시나리오: 실패하는 테스트를 담은 커밋을 관리자 권한으로 강제 병합해 `deploy` job이 스킵되거나 실패로 종료되는지, 배포된 서비스가 이전 버전으로 유지되는지 확인. 확인 후 즉시 되돌린다(정상 커밋으로 재병합)
+  - 확인 완료: 저장소 소유자 권한으로 실패 테스트 커밋(`34c0daf`)을 main에 직접 push(`enforce_admins: false`라 브랜치 보호 우회) → `test` job 실패(6m36s) → `deploy` job "skipping"(0s, `needs: test` 미충족) → 배포된 서비스는 이전 버전 그대로 `200 UP` 유지 확인 → 즉시 되돌리는 커밋(`e8d87d4`) push → `test`/`deploy` 모두 성공, 재배포 후 `200 UP` 재확인
 
 - [x] **T017** `[P]` — SC-006 검증
   - 시나리오: `git grep`으로 저장소 전체에서 평문 비밀번호·API 키 패턴을 검색해 매치가 없음을 확인
@@ -114,7 +115,7 @@
 
 ## 구현 완료 기준
 
-- [ ] 모든 태스크(코드 + 수동 작업 + 검증)가 완료 처리되었다.
-- [ ] `./gradlew test`가 전체 PASSED를 반환한다(기존 001~004 테스트 회귀 없음).
-- [ ] 배포된 공개 URL이 `/actuator/health`에서 200을 반환한다.
-- [ ] `git status`에 의도치 않은 파일이 없다(실제 자격증명이 담긴 파일 포함 여부 재확인).
+- [x] 모든 태스크(코드 + 수동 작업 + 검증)가 완료 처리되었다.
+- [x] `./gradlew test`가 전체 PASSED를 반환한다(기존 001~004 테스트 회귀 없음). — 확인 완료 (`BUILD SUCCESSFUL`, 실패 0건)
+- [x] 배포된 공개 URL이 `/actuator/health`에서 200을 반환한다. — 확인 완료 (`https://class-platform-quan.onrender.com/actuator/health` → `200 {"status":"UP"}`)
+- [x] `git status`에 의도치 않은 파일이 없다(실제 자격증명이 담긴 파일 포함 여부 재확인). — 확인 완료 (`env.txt`는 `.gitignore` 등록, 히스토리 전체 시크릿 검색 0건. `bin/`은 IntelliJ 산출물로 추적 대상 아님)
