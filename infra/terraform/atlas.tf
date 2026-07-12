@@ -39,7 +39,8 @@ resource "mongodbatlas_database_user" "app_user" {
 }
 
 resource "mongodbatlas_project_ip_access_list" "render_open" {
+  # 005에서 콘솔로 등록한 실제 항목은 comment가 비어 있다(comment 변경은 리소스 재생성을 유발하므로 실제 값에 맞춘다).
+  # 등록 배경: Render는 고정 IP를 제공하지 않아 0.0.0.0/0으로 전체 허용했다.
   project_id = var.atlas_project_id
   cidr_block = "0.0.0.0/0"
-  comment    = "Render는 고정 IP를 제공하지 않아 전체 허용(005)"
 }
