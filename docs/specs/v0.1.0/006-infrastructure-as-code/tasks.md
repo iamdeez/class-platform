@@ -28,10 +28,11 @@
   - 완료 기준: API Key(Public/Private 또는 Client ID/Secret) 및 3개 식별자 확보 — 확인 완료 (사용자가 직접 수행. 레거시 Public/Private API Key 발급, Project ID·클러스터명 확인)
   - **구현 중 발견한 이슈**: 현재 Atlas UI에는 plan.md가 가정한 "Access Manager" 메뉴가 사이드바에 없었다(IDENTITY & ACCESS 하위 Applications/Users/Teams/Federation 구조로 변경됨). 발급된 키의 형식(8자리 영숫자 Public Key + UUID 형태 Private Key)으로 보아 레거시 Programmatic API Key 방식으로 발급됨 — Service Account(Client ID/Secret) 방식이 아니므로 providers.tf 작성 시 `MONGODB_ATLAS_PUBLIC_API_KEY`/`MONGODB_ATLAS_PRIVATE_API_KEY` 환경변수 경로를 사용해야 한다
 
-- [ ] **T002** `[수동]` `[P]` — Upstash API Key 발급 + DB 식별자 확인
+- [x] **T002** `[수동]` `[P]` — Upstash API Key 발급 + DB 식별자 확인
   - 관련 요구사항: `FR-002`, `FR-004`
   - 상세: Upstash Console → Account → API에서 발급. 대상 Redis 데이터베이스의 ID 확인
-  - 완료 기준: API Key + 계정 이메일 + DB ID 확보
+  - 완료 기준: API Key + 계정 이메일 + DB ID 확보 — 확인 완료 (사용자가 API Key 발급, AI가 Upstash Developer API(`GET /v2/redis/databases`)로 조회해 `database_id: 763bfc83-3314-45ce-8966-f09839b5c0ba` 확인. endpoint·password가 기존 005 접속 정보와 일치함을 확인해 올바른 DB임을 검증)
+  - **구현 중 발견한 이슈**: Upstash Terraform provider는 환경변수를 자동으로 읽지 않는다(Upstash CLI와 달리). `email`/`api_key`를 `terraform.tfvars`로 명시 전달해야 한다(research.md 불확실성 해소 — plan.md "자격증명 처리" 절에 이미 이 경로를 대비해뒀음). 콘솔에서 DB ID가 표시되는 위치는 확인하지 못했고, API 직접 조회로 대체함
 
 - [ ] **T003** `[수동]` `[P]` — Aiven API Token 발급 + 서비스 식별자 확인
   - 관련 요구사항: `FR-003`, `FR-004`
