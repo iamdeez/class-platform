@@ -1,5 +1,54 @@
 # Changes: v0.1.0
 
+## [004-complex-query-statistics] 구현 완료
+
+**변경 파일**:
+
+인프라/설정:
+- `build.gradle.kts`: `mybatis-spring-boot-starter:3.0.3` 추가(001의 JPA, 002의 MongoDB, 003의 Redis에 이어 네 번째 영속성 기술. `course`/`enrollment` 모두 MySQL 소속이라 동일 `DataSource`를 JPA와 함께 공유하며 별도 트랜잭션 매니저 조정이 불필요)
+- `src/main/resources/application.yml`: `mybatis.mapper-locations`(`classpath:mybatis/mapper/*.xml`), `mybatis.configuration.map-underscore-to-camel-case: true` 추가
+- `src/main/resources/mybatis/mapper/CourseStatisticsMapper.xml` (신규): GROUP BY + `CASE WHEN` 조건부 집계 SQL(강사 목록/단일 강의 조회가 `<sql>` fragment 공유)
+- `src/main/resources/db/migration/V3__add_enrollment_price_and_completed_status.sql` (신규): `enrollment.price DECIMAL(10,2)` 추가 + 기존 행 `course.price`로 백필. `status`는 기존 VARCHAR(20) 컬럼 재사용(스키마 변경 없이 `COMPLETED` 값 허용)
+
+Enrollment 확장(`enrollment/*`):
+- `domain/EnrollmentStatus.kt`: `COMPLETED` 추가, `CourseStatus.canTransitionTo()`와 동일한 패턴으로 전이표 캡슐화(`ACTIVE→COMPLETED`/`ACTIVE→CANCELLED`만 허용, 둘 다 종단 상태)
+- `domain/Enrollment.kt`: `price: BigDecimal` 필드 추가(`create()`/`reconstitute()` 시그니처 변경 — Post의 `likeCount`/`viewCount`와 달리 기본값 없이 모든 호출부에 명시를 강제하는 Breaking Change), `complete()` 메서드 추가
+- `application/EnrollUseCase.kt`: `course.price`를 `Enrollment.create()`에 스냅샷으로 전달
+- `application/CompleteEnrollmentUseCase.kt` (신규): 신청 없음(404) → 강의 없음(404) → 비담당 강사(403) → 상태 전이 위반(409, `InvalidEnrollmentStatusException`) → 저장
+- `application/ListMyEnrollmentsUseCase.kt`: **버그 수정** — 필터 조건을 `status == ACTIVE`에서 `status != CANCELLED`로 변경(001 당시 CANCELLED만 제외할 의도였으나, 이번 spec에서 COMPLETED가 추가되며 "내 신청 목록"에서 완료된 수강까지 함께 가려지던 문제)
+- `infrastructure/{EnrollmentJpaEntity, EnrollmentRepositoryImpl}.kt`: `price` 컬럼 매핑 추가
+- `presentation/EnrollmentController.kt`, `presentation/dto/EnrollmentDtos.kt`: `POST /api/enrollments/{enrollmentId}/complete` 추가(`CompleteEnrollmentResponse(enrollmentId, status)`)
+
+Course 확장(`course/*`):
+- `domain/CourseRepository.kt`, `infrastructure/{CourseJpaRepository, CourseRepositoryImpl}.kt`: `findAllByInstructorId(instructorId)` 추가(상태 무관, DRAFT 포함 — 강사 본인 대시보드이므로 공개 여부와 무관하게 전부 조회)
+- `domain/exception/CourseAccessDeniedException.kt` (신규): `ForbiddenActionException` 상속(403). 강의 소유권 검증 실패 시 사용(001의 `PublishCourseUseCase`/`CloseCourseUseCase`에는 여전히 이 검증이 없다 — 003 CHANGES.md에서부터 이어진 기존 갭)
+
+Statistics 도메인 신설(`statistics/*`):
+- `domain/CourseStatistics.kt` (신규): 프레임워크 비의존 값 객체(courseId, title, studentCount, revenue, completionRate, cancellationRate)
+- `domain/CourseStatisticsRepository.kt` (신규): 포트 인터페이스(`findAllByInstructorId`, `findByCourseId`)
+- `infrastructure/CourseStatisticsMapper.kt` (신규): `@Mapper` 인터페이스 + 원시 집계 결과 `CourseStatisticsRow`. `@SpringBootApplication`(`com.classplatform`) 하위 패키지라 별도 `@MapperScan` 없이 자동 스캔됨
+- `infrastructure/CourseStatisticsRepositoryImpl.kt` (신규): 원시 카운트 → `completionRate`(`completed/(active+completed)`)·`cancellationRate`(`cancelled/total`) 변환, 분모 0 방어
+- `application/{GetInstructorStatistics, GetCourseStatistics}UseCase.kt` (신규): 단일 강의 조회는 소유권 검증(403/404) 후 통계 반환
+- `presentation/StatisticsController.kt`, `presentation/dto/StatisticsDtos.kt` (신규): `GET /api/instructors/me/statistics`, `GET /api/courses/{courseId}/statistics`
+
+테스트:
+- 단위: `CompleteEnrollmentUseCaseTest`(정상/404/403/409×2), `EnrollUseCaseTest`(가격 스냅샷 케이스 추가), `ListMyEnrollmentsUseCaseTest`(완료된 신청 포함 케이스 추가), `{GetInstructorStatistics, GetCourseStatistics}UseCaseTest`, `CourseStatisticsRepositoryImplTest`(SC-009/010, MockK로 Mapper 대체)
+- 슬라이스(`@WebMvcTest`): `EnrollmentControllerTest`(완료 처리 케이스 추가), `StatisticsControllerTest`
+- 통합(Testcontainers MySQL, `@SpringBootTest` 풀 컨텍스트): `CourseRepositoryImplIT`(강사별 목록), `EnrollmentRepositoryImplIT`(price 왕복), `EnrollmentCompletionIT`(SC-004~006), `CourseStatisticsRepositoryImplIT`(혼합 상태 집계, 0/0 방어, SC-007/008), `StatisticsControllerIT`(SC-001~003)
+
+**설계 근거**:
+- **MyBatis 도입**: `CASE WHEN` 기반 조건부 집계(활성/완료/취소별 카운트·합계를 단일 GROUP BY로)는 JPA 네이티브 쿼리보다 MyBatis XML 매퍼의 동적 SQL·원시 SQL 제어력이 더 적합하다고 판단했다(001 spec.md에서 이미 "004는 MyBatis"로 예고됨). `@DataJpaTest`(JPA 슬라이스)는 MyBatis 자동 구성을 포함하지 않아, MyBatis 관련 통합 테스트는 `@SpringBootTest` 풀 컨텍스트로 작성했다.
+- **완료율/취소율 계산 위치**: SQL에서 나눗셈까지 처리하지 않고 `CourseStatisticsRepositoryImpl`(Kotlin)에서 원시 카운트로 계산한다 — DB 방언별 정수 나눗셈 함정을 피하고 0 나눗셈 방어 로직 테스트도 더 쉽다.
+- **`price` 필드는 기본값 없는 Breaking Change로 설계**: 매출 계산의 핵심 도메인 데이터이므로, 필드 누락 시 조용히 0으로 채워지는 것을 방지하기 위해 모든 생성 경로(`create()`/`reconstitute()`)에서 명시적으로 값을 전달하도록 강제했다(Post의 `likeCount`/`viewCount`가 기본값 0을 허용한 것과 대비되는 결정).
+- **가격 변경 시뮬레이션**: 이 프로젝트에는 "강의 가격 변경" 유스케이스 자체가 없어(`Course.price`는 불변), SC-007 검증은 서로 다른 `Enrollment.price` 스냅샷을 직접 생성해 매출이 `course.price`(현재값)가 아닌 신청 시점 스냅샷 합임을 확인하는 방식으로 작성했다.
+
+**후속 작업 시 주의사항**:
+- **`ListMyEnrollmentsUseCase` 필터 변경**: `status == ACTIVE` → `status != CANCELLED`로 바뀌었으므로, 향후 세 번째 이상의 종단 상태가 추가되면 "내 신청 목록"에 포함할지 여부를 이 필터 기준으로 다시 검토해야 한다.
+- **Course 소유자 권한 체크 미구현 갭 잔존**: `PublishCourseUseCase`/`CloseCourseUseCase`는 여전히 소유권 검증이 없다(001부터 이어진 기존 갭, 이번 spec에서 신설한 `CourseAccessDeniedException`을 재사용해 해소 가능하나 SC 부재로 범위 밖).
+- **완료 처리 취소(되돌리기) 미지원**: spec.md에서 범위 외로 명시한 대로 완료는 단방향 처리만 지원한다.
+- **테스트에서 한글 응답 본문을 `ObjectMapper`로 직접 파싱할 때는 `MockHttpServletResponse.getContentAsString(Charsets.UTF_8)`로 charset을 명시할 것**: 미지정 시 ISO-8859-1로 디코딩되어 mojibake가 발생한다(`jsonPath()` assertion은 자체적으로 올바르게 처리하므로 영향 없음). `StatisticsControllerIT` 작성 중 처음 발견됨.
+- **MySQL·MongoDB·Redis·MyBatis 4개 영속성 기술 공존**: `@SpringBootTest` 풀 컨텍스트 테스트는 이제 최대 3개의 Testcontainers(MySQL/MongoDB/Redis)를 함께 띄우며, MyBatis는 MySQL의 동일 `DataSource`를 JPA와 공유한다.
+
 ## [003-like-view-count-caching] 구현 완료
 
 **변경 파일**:
