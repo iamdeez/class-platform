@@ -93,11 +93,11 @@
   - 완료 기준: 단위 테스트(MockK)로 정상 조회·403·404 케이스 통과 — 확인 완료 (4개 케이스 모두 PASS)
   - **구현 노트**: 403 판정에 필요한 `CourseAccessDeniedException`(`ForbiddenActionException` 상속)이 기존에 없어 `course/domain/exception`에 신규 추가했다. `GetCourseStatisticsUseCase`는 소유권 검증 후 `findByCourseId()`가 이론상 null을 반환할 수 없지만(직전에 `courseRepository.findById()`로 존재를 확인했으므로), 방어적으로 `CourseNotFoundException`을 재사용해 처리했다.
 
-- [ ] **T012** — StatisticsController 및 DTO 구현 (T011 완료 후)
+- [x] **T012** — StatisticsController 및 DTO 구현 (T011 완료 후)
   - 구현 파일: `statistics/presentation/StatisticsController.kt`(신규), `statistics/presentation/dto/StatisticsDtos.kt`(신규)
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`
   - 상세: `GET /api/instructors/me/statistics`, `GET /api/courses/{courseId}/statistics`
-  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인
+  - 완료 기준: MockMvc 슬라이스 테스트로 요청/응답 스키마 확인 — 확인 완료 (목록 200, 단일 200, 403 매핑 3개 케이스 PASS). `toResponse()`는 기존 `CourseController`/`EnrollmentController` 컨벤션을 따라 컨트롤러 내부 private 확장 함수로 배치
 
 ### Phase 4. 테스트 (SC-XXX 검증)
 
