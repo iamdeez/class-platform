@@ -50,10 +50,10 @@
   - 상세: `test` job(push 전체 브랜치 + PR to main에서 `./gradlew test`) + `deploy` job(`needs: test`, main push에서만 `RENDER_DEPLOY_HOOK_URL` 호출)
   - 완료 기준: 워크플로우 파일이 `actionlint` 또는 GitHub Actions 문법 검사를 통과한다(YAML 문법 오류 없음) — 확인 완료 (`brew install actionlint` 후 `actionlint .github/workflows/ci-cd.yml` exit code 0, 출력 없음)
 
-- [ ] **T006** — `.env.example`에 배포용 환경변수 키 문서화
+- [x] **T006** — `.env.example`에 배포용 환경변수 키 문서화
   - 구현 파일: `.env.example`(수정)
   - 상세: `MYSQL_JDBC_URL`, `MONGODB_URI`, `REDIS_PASSWORD`, `REDIS_SSL_ENABLED` 등 신규 키를 값 없이(플레이스홀더 주석과 함께) 추가
-  - 완료 기준: 실제 자격증명 값이 커밋되지 않는다
+  - 완료 기준: 실제 자격증명 값이 커밋되지 않는다 — 확인 완료 (`git diff`로 모든 추가 라인이 주석·`{placeholder}` 형태임을 확인)
 
 ### Phase 2. 사용자 수동 작업 `[수동]`
 
