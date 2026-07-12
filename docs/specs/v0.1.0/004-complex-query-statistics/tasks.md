@@ -101,10 +101,11 @@
 
 ### Phase 4. 테스트 (SC-XXX 검증)
 
-- [ ] **T013** — SC-001, SC-002, SC-003 통합 테스트 (T012 완료 후)
+- [x] **T013** — SC-001, SC-002, SC-003 통합 테스트 (T012 완료 후)
   - 테스트 파일: `statistics/presentation/StatisticsControllerIT.kt`
   - 검증 대상: `SC-001`, `SC-002`, `SC-003`
-  - 시나리오: 강사가 여러 강의·다양한 수강 상태를 시드한 뒤 목록/상세 통계 조회, 비담당 강사의 조회 시도 시 403 확인
+  - 시나리오: 강사가 여러 강의·다양한 수강 상태를 시드한 뒤 목록/상세 통계 조회, 비담당 강사의 조회 시도 시 403 확인 — 확인 완료 (3개 케이스 모두 PASS)
+  - **구현 중 발견한 이슈**: `MockHttpServletResponse.contentAsString`(charset 미지정)이 한글 응답 본문을 ISO-8859-1로 디코딩해 깨진 문자열을 반환함을 발견했다(예: "강의A" → "ê°ìA"). `jsonPath()` assertion은 자체적으로 올바르게 디코딩하므로 영향이 없었지만, 목록 응답에서 제목으로 항목을 찾아 검증해야 하는 이 테스트에서 `ObjectMapper`로 직접 파싱하며 처음 드러났다. `response.getContentAsString(Charsets.UTF_8)`로 명시적 지정해 해결 — 실제 프로덕션 응답(HTTP 바이트)에는 문제가 없는 테스트 전용 이슈였다.
 
 - [ ] **T014** — SC-004, SC-005, SC-006 통합 테스트 (T007 완료 후, T013과 병렬 가능) `[P]`
   - 테스트 파일: `enrollment/presentation/EnrollmentCompletionIT.kt`
