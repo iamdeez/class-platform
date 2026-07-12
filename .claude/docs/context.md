@@ -25,8 +25,8 @@
 
 - **프로젝트명**: class-platform
 - **목적**: 월부닷컴 Sr. Software Engineer(BE) 채용공고 대비 포트폴리오 연습 — 온라인 클래스 플랫폼(강의/커뮤니티) 미니 클론
-- **현재 버전**: v0.1.0 (001, 002, 003, 004 spec 구현 완료)
-- **주요 기술 스택 (적용됨)**: Kotlin 1.9.25, Spring Boot 3.3.4, JDK 17, Gradle(Kotlin DSL). 001: Spring Data JPA + Hibernate, Flyway, MySQL 8.0. 002: Spring Data MongoDB, MongoDB 8.0, `com.anthropic:anthropic-java:2.34.0`(Claude API, Structured Outputs), `org.jsoup:jsoup`(HTML sanitize, 001 후속 도입 후 002도 재사용). 003: Spring Data Redis(Lettuce), Redis 7(alpine) — 좋아요·조회수 캐싱. 004: `mybatis-spring-boot-starter:3.0.3` — 강사 대시보드 통계 집계(GROUP BY + `CASE WHEN` 조건부 카운트/합계 단일 쿼리, `course`/`enrollment`와 동일 MySQL `DataSource` 공유). JUnit5 + MockK/springmockk(유닛·슬라이스), Testcontainers-MySQL/-MongoDB(통합, Redis는 공식 Testcontainers 모듈이 없어 `GenericContainer` 사용). 상세 선정 근거는 각 spec의 `research.md` 참조.
+- **현재 버전**: v0.1.0 (001, 002, 003, 004, 005 spec 구현 완료)
+- **주요 기술 스택 (적용됨)**: Kotlin 1.9.25, Spring Boot 3.3.4, JDK 17, Gradle(Kotlin DSL). 001: Spring Data JPA + Hibernate, Flyway, MySQL 8.0. 002: Spring Data MongoDB, MongoDB 8.0, `com.anthropic:anthropic-java:2.34.0`(Claude API, Structured Outputs), `org.jsoup:jsoup`(HTML sanitize, 001 후속 도입 후 002도 재사용). 003: Spring Data Redis(Lettuce), Redis 7(alpine) — 좋아요·조회수 캐싱. 004: `mybatis-spring-boot-starter:3.0.3` — 강사 대시보드 통계 집계(GROUP BY + `CASE WHEN` 조건부 카운트/합계 단일 쿼리, `course`/`enrollment`와 동일 MySQL `DataSource` 공유). 005: `spring-boot-starter-actuator`(헬스체크) — 도메인 코드 변경 없이 GitHub Actions CI/CD + Render/MongoDB Atlas/Upstash/Aiven 배포 구성(상세는 `infra.md` 참조). JUnit5 + MockK/springmockk(유닛·슬라이스), Testcontainers-MySQL/-MongoDB(통합, Redis는 공식 Testcontainers 모듈이 없어 `GenericContainer` 사용). 상세 선정 근거는 각 spec의 `research.md` 참조.
 
 ## 2. 프로젝트 구조
 
@@ -260,3 +260,4 @@ Post (1) ──── 댓글 대상 ───→ (N) Comment
 | 2026-07-12 | `6df6a9d` | 001 완료(EnrollmentController 구현, SC-001~009 테스트 전체 완료, HtmlSanitizer 후속 보완) + 002 spec(post/comment 애그리거트, MongoDB 도입, Claude API 비동기 AI 태깅) 구현 완료를 한 번에 반영. 프로젝트 구조·레이어·핵심 모듈·이벤트 흐름(비동기 AI 태깅 추가)·도메인 모델·용어 사전·기술 부채를 실제 코드 기준으로 전면 갱신 | `docs/specs/v0.1.0/001-class-enrollment-core/`, `docs/specs/v0.1.0/002-community-post-ai-tagging/` |
 | 2026-07-12 | `1f36131`(+Phase 4 미커밋분) | 003 spec(Redis 도입, 게시글 좋아요·조회수·인기 랭킹·상세 캐시) 구현 완료 반영. `PostPopularityPort`/`PostCachePort`/`PostSnapshot`/`SchedulingConfig` 등 신규 모듈, 좋아요·조회수 캐싱 흐름, `Post` 엔티티 필드 확장, 용어 사전, 기술 부채(좋아요 0건 게시글 랭킹 부재, Redis 동기화 유실 가능성)를 실제 코드 기준으로 갱신 | `docs/specs/v0.1.0/003-like-view-count-caching/` |
 | 2026-07-12 | `2990580` | 004 spec(MyBatis 도입, 강사 대시보드 통계, Enrollment 완료 상태·가격 스냅샷) 구현 완료 반영. `statistics` bounded context 신설(6번째), `Enrollment`/`EnrollmentStatus` 확장, `CourseAccessDeniedException` 신설, 통계 집계 흐름, 도메인 모델(`Enrollment.price`, `CourseStatistics`), 용어 사전, 기술 부채(완료 처리 취소 미지원, 강의 가격 변경 유스케이스 없음, "MyBatis 미도입" 항목 해소로 제거)를 실제 코드 기준으로 갱신 | `docs/specs/v0.1.0/004-complex-query-statistics/` |
+| 2026-07-13 | `c63bafe` | 005 spec(GitHub Actions CI/CD, Render/MongoDB Atlas/Upstash/Aiven 배포) 완료 반영. 도메인 코드 변경은 없음(순수 인프라 spec) — `spring-boot-starter-actuator` 추가, 프로젝트 개요의 기술 스택·버전 표기만 갱신. 배포 구성 상세는 `infra.md` 참조 | `docs/specs/v0.1.0/005-ci-cd-deploy/` |

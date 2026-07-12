@@ -1,5 +1,39 @@
 # Changes: v0.1.0
 
+## [005-ci-cd-deploy] 구현 완료
+
+**변경 파일**:
+
+CI/CD:
+- `.github/workflows/ci-cd.yml` (신규): `test` job(push 모든 브랜치 + main 대상 PR에서 `./gradlew test`) + `deploy` job(`needs: test`, main push에서만 Render Deploy Hook 호출). `needs` 의존으로 테스트 실패 시 배포가 자동 차단됨(FR-004)
+- `Dockerfile` (신규): 멀티스테이지 빌드(`eclipse-temurin:17-jdk-alpine`에서 `bootJar` → `eclipse-temurin:17-jre-alpine` 런타임). 배포 대상(Render)이 x86_64라 두 스테이지 모두 `--platform=linux/amd64` 고정
+- `.dockerignore` (신규): 표준 블록 + 프로젝트 특성(Gradle 캐시, spec 문서, 로컬 전용 파일) 반영
+
+배포 대응 설정:
+- `build.gradle.kts`: `spring-boot-starter-actuator` 추가(`/actuator/health` 헬스체크)
+- `src/main/resources/application.yml`: `server.port`(`PORT` 환경변수 우선, Render 12-factor 대응), `spring.datasource.url`/`spring.data.mongodb.uri`를 환경변수로 전체 오버라이드 가능화(로컬 기본값 유지, 하위 호환), `spring.data.redis.password`/`ssl.enabled` 추가(Upstash 대응), `management.endpoints.web.exposure.include: health` + `show-details: never`(최소 노출)
+- `.env.example`: 배포용 환경변수 키를 플레이스홀더로 문서화(`MYSQL_JDBC_URL`, `MONGODB_URI`, `REDIS_PASSWORD` 등)
+- `.gitignore`: 관리형 서비스 접속 정보를 담은 로컬 파일(`env.txt`) 제외 추가
+
+인프라 구성(코드 외):
+- **컴퓨트**: Render.com 무료 Web Service(Docker 기반), Auto-Deploy Off + Deploy Hook으로만 배포 트리거(테스트 게이트 보장)
+- **MySQL**: Aiven 무료 티어(`sslMode=REQUIRED`)
+- **MongoDB**: MongoDB Atlas M0(무료, 영구)
+- **Redis**: Upstash 무료 티어(TLS 필수)
+- **GitHub 저장소**: private → **public**으로 전환(브랜치 보호 규칙은 private 저장소에서 GitHub Pro가 필요해 무료로 사용할 수 없었음. 포트폴리오 목적에도 부합하고 GitHub Actions 무료 분당 한도도 무제한이 됨). main 브랜치 보호 규칙(`test` 상태 검사 필수) 등록
+
+**설계 근거**:
+- 3개 저장소(MySQL·MongoDB·Redis) 각각을 무료로 운영하려면 하나의 서버에 다 올리는 방식(Oracle Cloud Always Free VM)과 관리형 서비스 조합(Atlas+Upstash+Aiven+Render) 중 후자를 선택했다 — 서버 관리 부담이 없고, Render 무료 티어의 콜드 스타트(15분 유휴 후 슬립)를 감수하는 대신 운영 편의성을 취했다.
+- MySQL 연결은 `sslMode=REQUIRED`로 암호화만 보장하고 서버 인증서 검증(`VERIFY_CA`)은 생략했다 — 포트폴리오 목적의 의도적 단순화.
+- `deploy` job은 `test` job에 대한 `needs` 의존만으로 FR-004(테스트 실패 시 배포 차단)를 보장하며, Render의 GitHub 연동 자체의 Auto-Deploy는 반드시 꺼서 이 게이트를 우회하지 못하게 했다.
+
+**후속 작업 시 주의사항**:
+- **브랜치 보호가 관리자 직접 push는 막지 못함**: `enforce_admins: false`로 설정해, 저장소 소유자가 `main`에 직접 push하면 브랜치 보호 규칙(Required status check)을 우회할 수 있다(GitHub 자체 동작). 다만 CI/CD 워크플로우의 `deploy` job은 push 경로와 무관하게 `needs: test`로 항상 게이트되므로, 실제 배포 안전성에는 영향이 없다(T016으로 검증됨).
+- **Render 무료 티어 라우팅 불안정 관찰**: 배포 직후 Render 엣지가 간헐적으로 `x-render-routing: no-server` 404를 반환하는 현상을 관찰했다(재요청 시 정상 응답). 무료 티어의 일시적 현상으로 추정되며, 별도 재시도 로직 없이 감수한다.
+- **Upstash Redis 자격증명 타입 주의**: Upstash 대시보드는 "REST API"(HTTP 토큰)와 "Redis"(TCP 비밀번호) 두 종류의 자격증명을 제공한다. 이 프로젝트는 Lettuce(TCP)를 쓰므로 반드시 "Redis" 탭의 Password를 사용해야 한다 — REST 토큰을 넣으면 연결이 실패한다.
+- **`env.txt`(로컬 전용) 취급**: 관리형 서비스 접속 정보를 담은 파일로, `.gitignore`에 등록되어 있으나 Git 이력에 실제로 커밋된 적은 없음을 확인했다(전환 전 `git log --all -p` 검색). 다만 이 파일 자체는 로컬에 평문으로 남아있으므로, 필요 없어지면 삭제하거나 각 서비스의 자격증명을 재발급(rotate)하는 것을 권장한다.
+- **IaC 미도입**: 지금은 Render/Atlas/Upstash/Aiven 리소스를 모두 웹 UI로 수동 프로비저닝했다. Terraform(mongodbatlas/upstash/aiven 공식 provider) + Render는 자체 `render.yaml` Blueprint 조합으로 이 과정을 코드화하는 것이 다음 후보(006 spec 논의 중)다.
+
 ## [004-complex-query-statistics] 구현 완료
 
 **변경 파일**:
