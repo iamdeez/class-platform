@@ -26,3 +26,4 @@ out/
 
 # Local environment secrets (docker compose env_file) — .env.example is the tracked template
 .env
+env.txt
