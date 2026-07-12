@@ -44,11 +44,11 @@
   - 상세: `~/.claude/rules/on-demand/docker.md` 표준 블록 적용(`.git/`, `.claude/*`(docs 화이트리스트 제외), `build/`, `.gradle/` 등)
   - 완료 기준: `docker build` 컨텍스트에 불필요한 파일이 포함되지 않는다(`docker build` 로그의 "Sending build context" 크기로 확인) — 확인 완료. 표준 블록에 프로젝트 특성(Gradle `.gradle/`/`build/`, spec 문서 `docs/`, 로컬 전용 `docker-compose.yml`/`.env`)을 추가. 재빌드 시 build context 774B(+ COPY 대상 20.54kB)로 최소화됨을 로그로 확인
 
-- [ ] **T005** (T001, T002 완료 후) — CI/CD 워크플로우 작성
+- [x] **T005** (T001, T002 완료 후) — CI/CD 워크플로우 작성
   - 구현 파일: `.github/workflows/ci-cd.yml`(신규)
   - 관련 요구사항: `FR-001`, `FR-002`, `FR-003`, `FR-004`
   - 상세: `test` job(push 전체 브랜치 + PR to main에서 `./gradlew test`) + `deploy` job(`needs: test`, main push에서만 `RENDER_DEPLOY_HOOK_URL` 호출)
-  - 완료 기준: 워크플로우 파일이 `actionlint` 또는 GitHub Actions 문법 검사를 통과한다(YAML 문법 오류 없음)
+  - 완료 기준: 워크플로우 파일이 `actionlint` 또는 GitHub Actions 문법 검사를 통과한다(YAML 문법 오류 없음) — 확인 완료 (`brew install actionlint` 후 `actionlint .github/workflows/ci-cd.yml` exit code 0, 출력 없음)
 
 - [ ] **T006** — `.env.example`에 배포용 환경변수 키 문서화
   - 구현 파일: `.env.example`(수정)
