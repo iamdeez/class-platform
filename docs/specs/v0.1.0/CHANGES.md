@@ -1,5 +1,30 @@
 # Changes: v0.1.0
 
+## [006-infrastructure-as-code] 구현 완료
+
+**변경 파일**:
+
+- `infra/terraform/providers.tf` (신규): `mongodbatlas`/`upstash`/`aiven` provider 선언. Atlas/Aiven은 빈 provider 블록으로 환경변수(`MONGODB_ATLAS_PUBLIC_API_KEY`/`_PRIVATE_API_KEY`, `AIVEN_TOKEN`) 인증, Upstash는 provider가 환경변수를 지원하지 않아 변수로 명시 전달
+- `infra/terraform/variables.tf` (신규): `upstash_email`/`upstash_api_key`(둘 다 `sensitive = true`), `atlas_project_id`
+- `infra/terraform/atlas.tf` (신규): `mongodbatlas_advanced_cluster`(M0, TENANT/AWS/AP_NORTHEAST_2), `mongodbatlas_database_user`(`lifecycle.ignore_changes = [password]`), `mongodbatlas_project_ip_access_list`(`0.0.0.0/0`)
+- `infra/terraform/upstash.tf` (신규): `upstash_redis_database`
+- `infra/terraform/aiven.tf` (신규): `aiven_mysql`
+- `infra/terraform/terraform.tfvars.example` (신규): 값 없는 변수 키 문서화(커밋 대상)
+- `infra/terraform/.terraform.lock.hcl` (신규): provider 버전·체크섬 고정(Terraform 공식 권장에 따라 커밋 대상)
+- `.gitignore` (수정): `infra/terraform/.terraform/`, `*.tfstate*`, `terraform.tfvars` 등 추가(`.terraform.lock.hcl`은 제외 대상에서 뺌)
+
+**설계 근거**:
+- 005에서 웹 UI로 수동 프로비저닝한 3개 관리형 DB(MongoDB Atlas M0, Upstash Redis, Aiven MySQL)를 재생성 없이 `terraform import`로 Terraform state에 편입했다. Render(컴퓨트)는 공식 Terraform provider가 없고 자체 `render.yaml` Blueprint는 "편입"이 아닌 "신규 생성" 개념이라 범위에서 제외했다(005의 수동 설정 유지).
+- 각 리소스의 정확한 속성값은 추측하지 않고 각 서비스의 관리 API(Atlas Admin API, Upstash Developer API, Aiven API)를 직접 호출해 조회한 실제 값을 코드에 반영했다.
+- 리소스 속성을 실제와 다르게 채우면(`comment`, `tls` 등) 해당 필드가 "force replacement"(재생성) 대상이 되어 무중단 요건(NFR-002)을 깨뜨릴 수 있음을 실제로 확인했다 — Atlas IP Access List의 `comment`와 Upstash의 `tls`가 이 사례였다.
+
+**후속 작업 시 주의사항**:
+- **Upstash Terraform provider는 환경변수 인증을 지원하지 않는다**: `email`/`api_key`를 `terraform.tfvars`(gitignore 대상)로 명시 전달해야 한다. Atlas/Aiven과 다른 패턴이므로 향후 provider 추가 시 매번 공식 문서로 재확인할 것.
+- **Terraform이 설정에 선언된 모든 provider를 초기화한다**: 특정 provider의 리소스만 import/plan하려 해도(`-target` 사용 여부와 무관하게) 설정에 선언된 다른 provider의 자격증명이 없으면 전체가 막힌다("token is required for Aiven client" 등). 실행 전 모든 provider의 환경변수를 함께 설정해야 한다.
+- **속성값을 실제와 다르게 채우면 재생성(destroy+create) 위험이 있다**: `terraform plan`에서 diff가 나오면 "왜 이 필드가 force-replacement인지"부터 확인하고, 실제 값에 코드를 맞추는 방향으로 해결해야 한다(리소스를 바꾸는 게 아니라 코드를 실제에 맞춘다는 원칙).
+- **로컬 state·tfvars는 로컬에만 존재**: 이 spec은 로컬 state(원격 미사용)로 설계했다. 다른 환경(예: CI)에서 Terraform을 실행하려면 state 공유 방법(원격 backend 등)을 먼저 설계해야 한다(범위 외로 명시됨).
+- **자격증명(env.txt) 재발급 권장**: 006 구현 과정에서 Atlas Public/Private Key, Upstash API Key, Aiven Token을 신규 발급해 `env.txt`(gitignore 대상, 로컬 전용)에 저장했다. 이 파일은 커밋되지 않았지만, 필요 없어지면 삭제하거나 각 서비스에서 재발급(rotate)할 것.
+
 ## [005-ci-cd-deploy] 구현 완료
 
 **변경 파일**:
