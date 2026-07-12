@@ -1,0 +1,41 @@
+# Git 메타데이터 (빌드 컨텍스트 불필요)
+.git/
+.gitignore
+.gitattributes
+
+# .claude/ — AI 메타데이터 (전체 제외, docs/ 문서 추적)
+.claude/*
+!.claude/docs/
+!.claude/docs/*.md
+
+# AI workspace (pipeline 실행 로그·기록 — SPEC_ROOT 하위)
+_ai-workspace/
+
+# 변경 로그 (Docker 컨텍스트 불필요)
+docs-change-logs/
+**/docs-change-logs/
+
+# spec 설계 문서 (Docker 컨텍스트 불필요)
+docs/
+
+# IDE / 에디터 메타데이터
+.idea/
+.vscode/
+.history/
+
+# Gradle 캐시·빌드 산출물
+.gradle/
+build/
+
+# 로컬 개발 전용 (컨테이너 이미지에 불필요)
+docker-compose.yml
+.env
+.env.example
+
+# OS 메타데이터
+.DS_Store
+Thumbs.db
+
+# OS / Tool crash dumps
+*.stackdump
+core.*

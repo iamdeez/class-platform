@@ -39,10 +39,10 @@
   - 완료 기준: `docker build -t class-platform .` 성공, `docker run -p 8080:8080 class-platform`으로 로컬 기동 확인(연결 가능한 로컬 MySQL/MongoDB/Redis 필요 — `docker-compose up -d`와 병행) — 확인 완료. `docker run`에 `host.docker.internal`로 로컬 MySQL/MongoDB/Redis 연결 오버라이드하여 헬스체크 200 확인
   - **구현 중 발견한 이슈**: `eclipse-temurin:17-jre-alpine`은 amd64 아키텍처만 매니페스트에 존재해(arm64 없음), 로컬 Mac(arm64)에서 `docker build` 시 "no match for platform in manifest" 오류가 발생했다. Render 배포 대상이 어차피 x86_64이므로 두 스테이지 모두 `FROM --platform=linux/amd64`를 명시해 해결(로컬에서는 에뮬레이션으로 빌드/실행, 프로덕션과 동일 아키텍처 보장). buildkit이 "FromPlatformFlagConstDisallowed" 린트 경고를 내지만 빌드 실패는 아니며, 고정 아키텍처가 의도된 선택이라 허용했다
 
-- [ ] **T004** `[P]` — `.dockerignore` 작성
+- [x] **T004** `[P]` — `.dockerignore` 작성
   - 구현 파일: `.dockerignore`(신규)
   - 상세: `~/.claude/rules/on-demand/docker.md` 표준 블록 적용(`.git/`, `.claude/*`(docs 화이트리스트 제외), `build/`, `.gradle/` 등)
-  - 완료 기준: `docker build` 컨텍스트에 불필요한 파일이 포함되지 않는다(`docker build` 로그의 "Sending build context" 크기로 확인)
+  - 완료 기준: `docker build` 컨텍스트에 불필요한 파일이 포함되지 않는다(`docker build` 로그의 "Sending build context" 크기로 확인) — 확인 완료. 표준 블록에 프로젝트 특성(Gradle `.gradle/`/`build/`, spec 문서 `docs/`, 로컬 전용 `docker-compose.yml`/`.env`)을 추가. 재빌드 시 build context 774B(+ COPY 대상 20.54kB)로 최소화됨을 로그로 확인
 
 - [ ] **T005** (T001, T002 완료 후) — CI/CD 워크플로우 작성
   - 구현 파일: `.github/workflows/ci-cd.yml`(신규)
