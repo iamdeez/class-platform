@@ -41,11 +41,12 @@
 
 ### Phase 2. Terraform 코드 작성 (T001~T003 완료 후)
 
-- [ ] **T004** — Terraform 프로젝트 초기 구조 + provider 설정
-  - 구현 파일: `infra/terraform/providers.tf`(신규), `.gitignore`(수정)
+- [x] **T004** — Terraform 프로젝트 초기 구조 + provider 설정
+  - 구현 파일: `infra/terraform/providers.tf`(신규), `infra/terraform/variables.tf`(신규), `.gitignore`(수정)
   - 관련 요구사항: `FR-001~003`
   - 상세: `required_providers`(mongodbatlas/upstash/aiven), 빈 provider 블록(Atlas/Aiven은 환경변수 인증), `.gitignore`에 `infra/terraform/.terraform/`, `*.tfstate*`, `infra/terraform/terraform.tfvars` 추가
-  - 완료 기준: `terraform init`이 오류 없이 완료된다(SC-001)
+  - 완료 기준: `terraform init`이 오류 없이 완료된다(SC-001) — 확인 완료 (`mongodbatlas v2.13.0`, `upstash v1.5.3`, `aiven v4.60.0` 설치, `.terraform.lock.hcl` 생성)
+  - **구현 노트**: `.terraform.lock.hcl`은 provider 버전·체크섬 고정용이라 `.gitignore`에서 제외하지 않고 커밋 대상으로 유지한다(Terraform 공식 권장 관행). `variables.tf`를 T004에서 먼저 만든 이유는 `providers.tf`의 upstash provider 블록이 이미 `var.upstash_email`/`var.upstash_api_key`를 참조하기 때문(plan.md 설계상 T005 소관이었으나 순서상 앞당김)
 
 - [ ] **T005** `[P]` — Atlas 리소스 코드 작성
   - 구현 파일: `infra/terraform/atlas.tf`(신규), `infra/terraform/variables.tf`(신규 또는 확장)

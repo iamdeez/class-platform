@@ -27,3 +27,12 @@ out/
 # Local environment secrets (docker compose env_file) — .env.example is the tracked template
 .env
 env.txt
+
+# Terraform (infra/terraform/) — state와 tfvars에는 민감 정보가 담길 수 있음
+# .terraform.lock.hcl은 provider 버전 고정을 위해 커밋 대상이므로 제외하지 않는다.
+infra/terraform/.terraform/
+infra/terraform/*.tfstate
+infra/terraform/*.tfstate.*
+infra/terraform/terraform.tfvars
+infra/terraform/*.auto.tfvars
+infra/terraform/crash.log
