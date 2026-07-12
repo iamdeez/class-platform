@@ -26,4 +26,16 @@ class ListMyEnrollmentsUseCaseTest {
 
 		assertEquals(listOf(active), result)
 	}
+
+	@Test
+	fun `완료된 신청은 목록에 포함된다`() {
+		val userId = UserId(2L)
+		val active = Enrollment.reconstitute(1L, 10L, userId, BigDecimal.ZERO, EnrollmentStatus.ACTIVE)
+		val completed = Enrollment.reconstitute(2L, 11L, userId, BigDecimal.ZERO, EnrollmentStatus.COMPLETED)
+		every { enrollmentRepository.findAllByUserId(userId) } returns listOf(active, completed)
+
+		val result = useCase.execute(userId)
+
+		assertEquals(listOf(active, completed), result)
+	}
 }

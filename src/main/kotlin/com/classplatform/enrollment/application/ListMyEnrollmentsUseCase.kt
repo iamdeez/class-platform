@@ -11,5 +11,5 @@ class ListMyEnrollmentsUseCase(
 	private val enrollmentRepository: EnrollmentRepository,
 ) {
 	fun execute(userId: UserId): List<Enrollment> =
-		enrollmentRepository.findAllByUserId(userId).filter { it.status == EnrollmentStatus.ACTIVE }
+		enrollmentRepository.findAllByUserId(userId).filter { it.status != EnrollmentStatus.CANCELLED }
 }

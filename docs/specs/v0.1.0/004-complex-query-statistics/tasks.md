@@ -107,10 +107,11 @@
   - 시나리오: 강사가 여러 강의·다양한 수강 상태를 시드한 뒤 목록/상세 통계 조회, 비담당 강사의 조회 시도 시 403 확인 — 확인 완료 (3개 케이스 모두 PASS)
   - **구현 중 발견한 이슈**: `MockHttpServletResponse.contentAsString`(charset 미지정)이 한글 응답 본문을 ISO-8859-1로 디코딩해 깨진 문자열을 반환함을 발견했다(예: "강의A" → "ê°ìA"). `jsonPath()` assertion은 자체적으로 올바르게 디코딩하므로 영향이 없었지만, 목록 응답에서 제목으로 항목을 찾아 검증해야 하는 이 테스트에서 `ObjectMapper`로 직접 파싱하며 처음 드러났다. `response.getContentAsString(Charsets.UTF_8)`로 명시적 지정해 해결 — 실제 프로덕션 응답(HTTP 바이트)에는 문제가 없는 테스트 전용 이슈였다.
 
-- [ ] **T014** — SC-004, SC-005, SC-006 통합 테스트 (T007 완료 후, T013과 병렬 가능) `[P]`
+- [x] **T014** — SC-004, SC-005, SC-006 통합 테스트 (T007 완료 후, T013과 병렬 가능) `[P]`
   - 테스트 파일: `enrollment/presentation/EnrollmentCompletionIT.kt`
   - 검증 대상: `SC-004`, `SC-005`, `SC-006`
-  - 시나리오: 정상 완료 처리 후 상태 확인, 비담당 강사의 완료 처리 시도(403), 이미 취소/완료된 수강 재완료 시도(409)
+  - 시나리오: 정상 완료 처리 후 상태 확인, 비담당 강사의 완료 처리 시도(403), 이미 취소/완료된 수강 재완료 시도(409) — 확인 완료 (4개 케이스 모두 PASS: SC-004, SC-005, SC-006×2)
+  - **구현 중 발견한 이슈**: SC-004 검증 중 `ListMyEnrollmentsUseCase`(001에서 작성)가 `status == ACTIVE`만 통과시켜 완료 처리된 수강이 "내 신청 목록"에서 사라지는 버그를 발견했다. 001 당시엔 CANCELLED만 제외할 의도였으나 이번 spec에서 COMPLETED가 추가되며 함께 가려졌다. `status != CANCELLED`로 수정하고 `ListMyEnrollmentsUseCaseTest`에 완료된 신청 포함 케이스를 추가했다. 전체 회귀 테스트로 기존 동작에 영향 없음을 확인.
 
 - [ ] **T015** — SC-007, SC-008 통합 테스트 (T010 완료 후, 위 태스크들과 병렬 가능) `[P]`
   - 테스트 파일: `statistics/infrastructure/CourseStatisticsRepositoryImplIT.kt`
